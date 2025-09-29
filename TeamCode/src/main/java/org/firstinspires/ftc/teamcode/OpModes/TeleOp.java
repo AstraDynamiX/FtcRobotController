@@ -1,11 +1,11 @@
-package OpModes;
+package org.firstinspires.ftc.teamcode.OpModes;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import Mechanisms.LaunchBoard;
-import Mechanisms.OmnimovementBoard;
+import org.firstinspires.ftc.teamcode.Mechanisms.LaunchBoard;
+import org.firstinspires.ftc.teamcode.Mechanisms.OmnimovementBoard;
 
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "NORMAL_TeleOp_DECODE")

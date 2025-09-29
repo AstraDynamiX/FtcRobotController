@@ -1,4 +1,4 @@
-package Mechanisms;
+package org.firstinspires.ftc.teamcode.Mechanisms;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -37,10 +37,10 @@ public class OmnimovementBoard
     public void init(HardwareMap hwMap)
     {
         //Initializes motors
-        leftFrontWheel = hwMap.get(DcMotor.class, "lfWheel");
-        rightFrontWheel = hwMap.get(DcMotor.class, "rfWheel");
-        leftBackWheel = hwMap.get(DcMotor.class, "lbWheel");
-        rightBackWheel = hwMap.get(DcMotor.class, "rbWheel");
+        leftFrontWheel = hwMap.get(DcMotor.class, "flWheel");
+        rightFrontWheel = hwMap.get(DcMotor.class, "frWheel");
+        leftBackWheel = hwMap.get(DcMotor.class, "blWheel");
+        rightBackWheel = hwMap.get(DcMotor.class, "brWheel");
 
         imu = hwMap.get(IMU.class, "imu");
         IMU.Parameters parametres = new IMU.Parameters(new RevHubOrientationOnRobot(
@@ -54,7 +54,7 @@ public class OmnimovementBoard
         rightFrontWheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         leftBackWheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightBackWheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        //Reverse right motors because they are mirrored (or not our motors are weird lol)
+        //Reverse right motors because they are mirrored
         leftFrontWheel.setDirection(DcMotorSimple.Direction.REVERSE);
         leftBackWheel.setDirection(DcMotorSimple.Direction.REVERSE);
         rightFrontWheel.setDirection(DcMotorSimple.Direction.FORWARD);

@@ -3,8 +3,8 @@ package OpModes;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import Mechanisms.LaunchBoard;
-import Mechanisms.OmnimovementBoard;
+import org.firstinspires.ftc.teamcode.Mechanisms.LaunchBoard;
+import org.firstinspires.ftc.teamcode.Mechanisms.OmnimovementBoard;
 
 @com.qualcomm.robotcore.eventloop.opmode.Autonomous(name = "Autonomous_blueBasket")
 public class AutonomousBlueBasket extends LinearOpMode

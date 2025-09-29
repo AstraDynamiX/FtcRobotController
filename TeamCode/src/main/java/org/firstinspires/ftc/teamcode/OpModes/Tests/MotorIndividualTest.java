@@ -1,4 +1,4 @@
-package OpModes.Tests;
+package org.firstinspires.ftc.teamcode.OpModes.Tests;
 
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -13,28 +13,24 @@ public class MotorIndividualTest extends OpMode
     private DcMotor rightFront;
     private DcMotor leftBack;
     private DcMotor rightBack;
-    private DcMotor midGecko;
 
     @Override
     public void init()
     {
-        leftFront = hardwareMap.get(DcMotor.class, "lfWheel");
-        rightFront = hardwareMap.get(DcMotor.class, "rfWheel");
-        leftBack = hardwareMap.get(DcMotor.class, "lbWheel");
-        rightBack = hardwareMap.get(DcMotor.class, "rbWheel");
-        midGecko = hardwareMap.get(DcMotor.class, "midGecko");
+        leftFront = hardwareMap.get(DcMotor.class, "flWheel");
+        rightFront = hardwareMap.get(DcMotor.class, "frWheel");
+        leftBack = hardwareMap.get(DcMotor.class, "blWheel");
+        rightBack = hardwareMap.get(DcMotor.class, "brWheel");
 
         leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         leftBack.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightBack.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        midGecko.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
-        leftFront.setDirection(DcMotorSimple.Direction.FORWARD);
-        leftBack.setDirection(DcMotorSimple.Direction.FORWARD);
+        leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
+        leftBack.setDirection(DcMotorSimple.Direction.REVERSE);
         rightFront.setDirection(DcMotorSimple.Direction.FORWARD);
-        rightBack.setDirection(DcMotorSimple.Direction.REVERSE);
-        midGecko.setDirection(DcMotorSimple.Direction.REVERSE);
+        rightBack.setDirection(DcMotorSimple.Direction.FORWARD);
     }
 
     @Override
@@ -44,7 +40,5 @@ public class MotorIndividualTest extends OpMode
         rightFront.setPower(gamepad1.right_trigger * 0.6);
         leftBack.setPower((gamepad1.left_bumper) ? 0.6 : 0);
         rightBack.setPower((gamepad1.right_bumper) ? 0.6 : 0);
-
-        midGecko.setPower(-gamepad1.right_stick_y * 0.5);
     }
 }
