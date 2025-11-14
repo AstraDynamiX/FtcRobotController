@@ -1,14 +1,13 @@
 package org.firstinspires.ftc.teamcode.OpModes;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Mechanisms.LaunchBoard;
 import org.firstinspires.ftc.teamcode.Mechanisms.OmnimovementBoard;
 
 
-@com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "NORMAL_TeleOp_DECODE")
+@com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "TeleOp_DECODE")
 public class TeleOp extends OpMode {
 
     private final double MOTOR_MULTIPLIER = 0.8;
@@ -16,19 +15,23 @@ public class TeleOp extends OpMode {
 
     OmnimovementBoard OmniBoard = new OmnimovementBoard();
     LaunchBoard LaunchBoard = new LaunchBoard();
-    //State machines (advanced programming type shi)
+    //State machines
     LaunchState launchState = LaunchState.IDLE;
     RevState revState = RevState.IDLE;
+    ButtonHoldState buttonHoldState = ButtonHoldState.IDLE;
     ElapsedTime launchTimer = new ElapsedTime();
     ElapsedTime revTimer = new ElapsedTime();
+    ElapsedTime buttonHoldTimer = new ElapsedTime();
 
     //Flags for buttons
     private boolean leftBumperHeld = false;
     private boolean rightBumperHeld = false;
+    private boolean aHeld = false;
     private boolean options1Held = false;
     //Flags for mechanisms
-    private boolean isMidGeckoReady = false;
-    private int ballsLaunched = 0;
+    private boolean lowPowerFlywheel = true;
+    private boolean isFlywheelReady = false;
+    private boolean isIntakeOn = false;
     //Other flags
     private boolean fieldCentric = false;
 
@@ -36,7 +39,8 @@ public class TeleOp extends OpMode {
     @Override
     public void init()
     {
-        OmniBoard.init(hardwareMap); LaunchBoard.init(hardwareMap);
+        OmniBoard.init(hardwareMap);
+        LaunchBoard.init(hardwareMap);
         telemetry.addData("BOOTED:", "Welcome to AstraDynamiX Technologies!");
     }
 
@@ -46,11 +50,12 @@ public class TeleOp extends OpMode {
         // ------ Chassis movement ------
 
         OmniBoard.ChassisMovement(
-                -gamepad1.left_stick_y * MOTOR_MULTIPLIER / (gamepad1.left_trigger/2.5+1),
-                gamepad1.left_stick_x * (MOTOR_MULTIPLIER*STRAFE_MULTIPLIER) / (gamepad1.left_trigger/2.5+1),
-                gamepad1.right_stick_x * MOTOR_MULTIPLIER / (gamepad1.left_trigger/2.5+1),
+                gamepad1.left_stick_y * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
+                gamepad1.left_stick_x * (MOTOR_MULTIPLIER*STRAFE_MULTIPLIER) / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
+                gamepad1.right_stick_x * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
                 MOTOR_MULTIPLIER * STRAFE_MULTIPLIER
         );
+
         if (gamepad1.options && !options1Held)
         {
             OmniBoard.SwitchDriveMode();
@@ -58,16 +63,32 @@ public class TeleOp extends OpMode {
         }
         if (!gamepad1.options) {options1Held = false;}
 
+        if (gamepad1.share) {OmniBoard.ResetIMU();}
+
         // ------ Mechanism controls ------
 
-        //Separate midGecko revving
+        //Intake
+        if (gamepad1.a && !aHeld)
+        {
+            if (!isIntakeOn) {LaunchBoard.IntakeMovement(-0.65);}
+            else {LaunchBoard.IntakeMovement(0);}
+            isIntakeOn = !isIntakeOn;
+            aHeld = true;
+        }
+        if (!gamepad1.a) {aHeld = false;}
+
+        //Flywheel revving and low power mode
         if (gamepad1.left_bumper && !leftBumperHeld)
         {
             if (revState == RevState.IDLE) {StartRev();}
-            else {StopRev();}
-            leftBumperHeld = true;
+            else
+            {
+                lowPowerFlywheel = !lowPowerFlywheel;
+                leftBumperHeld = true;
+            }
         }
         if (!gamepad1.left_bumper) {leftBumperHeld = false;}
+        if (UpdateButtonHold(gamepad1.left_bumper)) StopRev();
 
         //Launching the balls
         if (gamepad1.right_bumper && !rightBumperHeld)
@@ -77,12 +98,10 @@ public class TeleOp extends OpMode {
         }
         if (!gamepad1.right_bumper) {rightBumperHeld = false;}
 
-        if (gamepad1.b)
-        {LaunchBoard.SideGeckoMovement(0);}
-
         //Comments
-        telemetry.addData("MID GECKO READY:", isMidGeckoReady);
+        telemetry.addData("FLYWHEEL:", (isFlywheelReady) ? ((lowPowerFlywheel) ? "low power" : "ready") : "not ready");
         telemetry.addData("FIELD CENTRIC:", fieldCentric);
+        telemetry.addData("IMU:", OmniBoard.getIntegratedHeading());
 
         UpdateRev();
         UpdateLaunch();
@@ -90,9 +109,37 @@ public class TeleOp extends OpMode {
 
     // ------ Launching and revving state machines ------
 
-    //This exists so that instead of blocking the entire code with a while loop that
-    //checks the timer, there's a function that checks the timer with multiple if
-    //statements. Every time an if statement is triggered, the case switches.
+    enum ButtonHoldState
+    {
+        IDLE,
+        PRESSED
+    }
+
+    public boolean UpdateButtonHold(boolean buttonHeld)
+    {
+        switch (buttonHoldState)
+        {
+
+            case PRESSED :
+
+                if (buttonHoldTimer.milliseconds() >= 350 && buttonHeld) {return true;}
+                else if (!buttonHeld)
+                {
+                    buttonHoldState = ButtonHoldState.IDLE;
+                    return false;
+                }
+
+            case IDLE :
+            default :
+
+                if (buttonHeld)
+                {
+                    buttonHoldTimer.reset();
+                    buttonHoldState = ButtonHoldState.PRESSED;
+                }
+                return false;
+        }
+    }
 
     enum RevState
     {
@@ -110,21 +157,22 @@ public class TeleOp extends OpMode {
         {
             case REVVING:
 
-                LaunchBoard.MidGeckoMovement(0.85);
+                LaunchBoard.FlywheelMovement(0.9 * ((lowPowerFlywheel) ? 0.6 : 1));
                 revTimer.reset();
                 revState = RevState.REVVED;
                 break;
 
             case REVVED:
 
-                if (revTimer.milliseconds() >= 800) {isMidGeckoReady = true;}
+                if (revTimer.milliseconds() >= 800) {isFlywheelReady = true;}
+                LaunchBoard.FlywheelMovement(0.9 * ((lowPowerFlywheel) ? 0.6 : 1));
                 break;
 
             case IDLE:
             default:
 
-                LaunchBoard.MidGeckoMovement(0);
-                isMidGeckoReady = false;
+                LaunchBoard.FlywheelMovement(0);
+                isFlywheelReady = false;
                 break;
         }
     }
@@ -145,18 +193,19 @@ public class TeleOp extends OpMode {
         {
             case LAUNCHING:
 
-                LaunchBoard.SideGeckoMovement(0.85);
+                LaunchBoard.BallStopMovement(0.425);
                 launchTimer.reset();
                 launchState = LaunchState.LAUNCHED;
 
             case LAUNCHED:
 
-                if (launchTimer.milliseconds() >= 650)
+                if (launchTimer.milliseconds() >= 450)
                 {
-                    LaunchBoard.SideGeckoMovement(0);
-                    ballsLaunched++;
-                    if (ballsLaunched == 3) {ballsLaunched = 0;}
-                    launchState = LaunchState.IDLE;
+                    if (!gamepad1.right_bumper)
+                    {
+                        LaunchBoard.BallStopMovement(0.3125);
+                        launchState = LaunchState.IDLE;
+                    }
                 }
                 break;
 

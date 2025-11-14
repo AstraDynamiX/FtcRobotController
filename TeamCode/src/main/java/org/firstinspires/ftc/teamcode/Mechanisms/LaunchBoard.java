@@ -1,33 +1,34 @@
 package org.firstinspires.ftc.teamcode.Mechanisms;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.CRServo;
-import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.hardware.Servo;
 
 public class LaunchBoard
 {
-    private DcMotor midGecko;
-    private CRServo leftGecko;
-    private CRServo rightGecko;
+    private DcMotor intake;
+    private DcMotor flywheel;
+    private Servo ballStop;
 
 
     public void init(HardwareMap hwMap)
     {
         //Initializes motors and servos
-        leftGecko = hwMap.get(CRServo.class, "leftGecko");
-        rightGecko = hwMap.get(CRServo.class, "rightGecko");
-        midGecko = hwMap.get(DcMotor.class, "midGecko");
+        intake = hwMap.get(DcMotor.class, "intake");
+        flywheel = hwMap.get(DcMotor.class, "flywheel");
+        ballStop = hwMap.get(Servo.class, "ballStop");
         //Default run mode
-        midGecko.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        flywheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        intake.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
     }
 
     //Basically nothing lmao
 
-    //Separate because midGecko needs time to rev
-    public void MidGeckoMovement(double input) {midGecko.setPower(input);}
+    //Separate because flywheel needs time to rev
+    public void FlywheelMovement(double input) {flywheel.setPower(input);}
 
-    public void SideGeckoMovement(double input) {leftGecko.setPower(input); rightGecko.setPower(-input);}
+    public void BallStopMovement(double input) {ballStop.setPosition(input);}
+
+    public void IntakeMovement(double input) {intake.setPower(input);}
 
 }
