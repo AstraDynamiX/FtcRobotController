@@ -163,7 +163,7 @@ public class OmnimovementBoard
     //State machine
     OmnimovementBoard.YawLockState yawLockState = OmnimovementBoard.YawLockState.IDLE;
     ElapsedTime yawLockTimer = new ElapsedTime();
-    
+
     private double IMUAngle = 0;
     private double oldError = 0;
 
@@ -181,8 +181,8 @@ public class OmnimovementBoard
 
         imu = hwMap.get(IMU.class, "imu");
         IMU.Parameters parametres = new IMU.Parameters(new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.RIGHT,
-                RevHubOrientationOnRobot.UsbFacingDirection.DOWN
+                RevHubOrientationOnRobot.LogoFacingDirection.RIGHT, //TODO
+                RevHubOrientationOnRobot.UsbFacingDirection.DOWN //TODO
         ));
         imu.initialize(parametres);
         imu.resetYaw();
