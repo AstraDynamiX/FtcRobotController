@@ -181,8 +181,8 @@ public class OmnimovementBoard
 
         imu = hwMap.get(IMU.class, "imu");
         IMU.Parameters parametres = new IMU.Parameters(new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.RIGHT, //TODO
-                RevHubOrientationOnRobot.UsbFacingDirection.DOWN //TODO
+                RevHubOrientationOnRobot.LogoFacingDirection.RIGHT,
+                RevHubOrientationOnRobot.UsbFacingDirection.DOWN
         ));
         imu.initialize(parametres);
         imu.resetYaw();
@@ -208,12 +208,12 @@ public class OmnimovementBoard
 
         if (fieldCentric)
         {
-            double heading = getIntegratedHeading();
+            double heading = GetIntegratedHeading();
             fedLateral = lateral * Math.cos(heading) - axial * Math.sin(heading);
             fedAxial = lateral * Math.sin(heading) + axial * Math.cos(heading);
         }
 
-        double error = getIntegratedHeading() - IMUAngle;
+        double error = GetIntegratedHeading() - IMUAngle;
         double P = IMU_KP * error;
         double D = IMU_KD * (error - oldError);
         //Lock movement to current angle if driver isn't yawing to prevent robot from curving when strafing
@@ -247,9 +247,9 @@ public class OmnimovementBoard
         rightBackWheel.setPower(((axial + lateral + yaw) / denominator));
     }
 
-    public void SwitchDriveMode() {fieldCentric = !fieldCentric; IMUAngle = getIntegratedHeading();}
+    public void SwitchDriveMode() {fieldCentric = !fieldCentric; IMUAngle = GetIntegratedHeading();}
 
-    public double getIntegratedHeading()
+    public double GetIntegratedHeading()
     {return imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);}
 
     public void ResetIMU() {imu.resetYaw(); IMUAngle = 0;}
@@ -271,7 +271,7 @@ public class OmnimovementBoard
         switch (yawLockState) {
             case LOCK_YAW:
                 if (yawLockTimer.milliseconds() > 200) {
-                    IMUAngle = getIntegratedHeading();
+                    IMUAngle = GetIntegratedHeading();
                     yawLocked = true;
                     yawLockTimer.reset();
                     yawLockState = YawLockState.IDLE;

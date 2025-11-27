@@ -19,6 +19,7 @@ public class TeleOp extends OpMode {
     LaunchState launchState = LaunchState.IDLE;
     RevState revState = RevState.IDLE;
     ButtonHoldState buttonHoldState = ButtonHoldState.IDLE;
+    IntakeState intakeState = IntakeState.IDLE;
     ElapsedTime launchTimer = new ElapsedTime();
     ElapsedTime revTimer = new ElapsedTime();
     ElapsedTime buttonHoldTimer = new ElapsedTime();
@@ -27,6 +28,7 @@ public class TeleOp extends OpMode {
     private boolean leftBumperHeld = false;
     private boolean rightBumperHeld = false;
     private boolean aHeld = false;
+    private boolean bHeld = false;
     private boolean options1Held = false;
     //Flags for mechanisms
     private boolean lowPowerFlywheel = true;
@@ -80,15 +82,20 @@ public class TeleOp extends OpMode {
         //Flywheel revving and low power mode
         if (gamepad1.left_bumper && !leftBumperHeld)
         {
-            if (revState == RevState.IDLE) {StartRev();}
-            else
-            {
-                lowPowerFlywheel = !lowPowerFlywheel;
-                leftBumperHeld = true;
-            }
+            if (revState == RevState.IDLE) {revState = RevState.REVVING;}
+            else {lowPowerFlywheel = !lowPowerFlywheel;}
+            leftBumperHeld = true;
         }
         if (!gamepad1.left_bumper) {leftBumperHeld = false;}
-        if (UpdateButtonHold(gamepad1.left_bumper)) StopRev();
+        if (UpdateButtonHold(gamepad1.left_bumper)) {revState = RevState.IDLE;}
+
+        //Indexer
+        if (gamepad1.b && !bHeld)
+        {
+            bHeld = true;
+            LaunchBoard.StartIndexerSpin();
+        }
+        if (!gamepad1.b) {bHeld = false;}
 
         //Launching the balls
         if (gamepad1.right_bumper && !rightBumperHeld)
@@ -101,13 +108,17 @@ public class TeleOp extends OpMode {
         //Comments
         telemetry.addData("FLYWHEEL:", (isFlywheelReady) ? ((lowPowerFlywheel) ? "low power" : "ready") : "not ready");
         telemetry.addData("FIELD CENTRIC:", fieldCentric);
-        telemetry.addData("IMU:", OmniBoard.getIntegratedHeading());
+        telemetry.addData("", "");
+        telemetry.addData("IMU:", OmniBoard.GetIntegratedHeading() / 3.141 + "π");
+        telemetry.addData("INDEXER ANGLE", LaunchBoard.GetIndexerAngle());
+        telemetry.addData("TARGET ANGLE", LaunchBoard.GetTargetIndexerAngle());
 
         UpdateRev();
         UpdateLaunch();
+        LaunchBoard.UpdateIndexerSpin();
     }
 
-    // ------ Launching and revving state machines ------
+    // ------ state machines ------
 
     enum ButtonHoldState
     {
@@ -119,13 +130,12 @@ public class TeleOp extends OpMode {
     {
         switch (buttonHoldState)
         {
-
             case PRESSED :
 
                 if (buttonHoldTimer.milliseconds() >= 350 && buttonHeld) {return true;}
-                else if (!buttonHeld)
+                else
                 {
-                    buttonHoldState = ButtonHoldState.IDLE;
+                    if (!buttonHeld) {buttonHoldState = ButtonHoldState.IDLE;}
                     return false;
                 }
 
@@ -145,11 +155,7 @@ public class TeleOp extends OpMode {
     {
         IDLE,
         REVVING,
-        REVVED
     }
-
-    public void StartRev() {revState = RevState.REVVING;}
-    public void StopRev() {revState = RevState.IDLE;}
 
     public void UpdateRev()
     {
@@ -157,15 +163,8 @@ public class TeleOp extends OpMode {
         {
             case REVVING:
 
-                LaunchBoard.FlywheelMovement(0.9 * ((lowPowerFlywheel) ? 0.6 : 1));
-                revTimer.reset();
-                revState = RevState.REVVED;
-                break;
-
-            case REVVED:
-
                 if (revTimer.milliseconds() >= 800) {isFlywheelReady = true;}
-                LaunchBoard.FlywheelMovement(0.9 * ((lowPowerFlywheel) ? 0.6 : 1));
+                LaunchBoard.FlywheelMovement(0.935 * ((lowPowerFlywheel) ? 0.65 : 1));
                 break;
 
             case IDLE:
@@ -173,6 +172,7 @@ public class TeleOp extends OpMode {
 
                 LaunchBoard.FlywheelMovement(0);
                 isFlywheelReady = false;
+                revTimer.reset();
                 break;
         }
     }
@@ -193,17 +193,17 @@ public class TeleOp extends OpMode {
         {
             case LAUNCHING:
 
-                LaunchBoard.BallStopMovement(0.425);
+                LaunchBoard.TransferMovement(0.35);
                 launchTimer.reset();
                 launchState = LaunchState.LAUNCHED;
 
             case LAUNCHED:
 
-                if (launchTimer.milliseconds() >= 450)
+                if (launchTimer.milliseconds() >= 250)
                 {
                     if (!gamepad1.right_bumper)
                     {
-                        LaunchBoard.BallStopMovement(0.3125);
+                        LaunchBoard.TransferMovement(0.1);
                         launchState = LaunchState.IDLE;
                     }
                 }
@@ -212,6 +212,39 @@ public class TeleOp extends OpMode {
             case IDLE:
             default:
 
+                break;
+        }
+    }
+
+
+    enum IntakeState
+    {
+        IDLE,
+        EATING,
+        SPINNING
+    }
+
+    public void UpdateIntake()
+    {
+        switch (intakeState)
+        {
+            case EATING:
+
+                LaunchBoard.FlywheelMovement(0.9 * ((lowPowerFlywheel) ? 0.6 : 1));
+                revTimer.reset();
+                break;
+
+            case SPINNING:
+
+                if (revTimer.milliseconds() >= 800) {isFlywheelReady = true;}
+                LaunchBoard.FlywheelMovement(0.9 * ((lowPowerFlywheel) ? 0.6 : 1));
+                break;
+
+            case IDLE:
+            default:
+
+                LaunchBoard.FlywheelMovement(0);
+                isFlywheelReady = false;
                 break;
         }
     }

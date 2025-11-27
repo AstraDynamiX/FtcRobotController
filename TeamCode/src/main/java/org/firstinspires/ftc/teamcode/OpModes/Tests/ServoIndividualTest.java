@@ -14,7 +14,7 @@ public class ServoIndividualTest extends OpMode
     @Override
     public void init()
     {
-        servo = hardwareMap.get(Servo.class, "ballStop");
+        servo = hardwareMap.get(Servo.class, "transfer");
     }
 
     @Override
