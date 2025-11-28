@@ -10,6 +10,11 @@ import com.qualcomm.robotcore.util.Range;
 
 public class LaunchBoard
 {
+    private final double FLYWHEEL_RPT = 6000 / 60 / 20; //Rotations per function call
+    private final double FLYWHEEL_KP = 0;
+    private final double FLYWHEEL_KI = 0;
+    private final double FLYWHEEL_KD = 0;
+
     private DcMotor intake;
     private DcMotor flywheel;
     private Servo transfer;
@@ -20,6 +25,9 @@ public class LaunchBoard
 
     private double targetIndexerAngle = 120;
     private IndexerState indexerState = IndexerState.IDLE;
+
+    private double oldFlywheelError = 0;
+    private double lastTickRotations = 0;
 
 
     public void init(HardwareMap hwMap)
@@ -33,15 +41,25 @@ public class LaunchBoard
         battery = hwMap.get(VoltageSensor.class, "voltageSensor");
         indexerAngle = hwMap.get(AnalogInput.class, "indexerAngle");
         //Default run mode
-        flywheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        flywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         intake.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
     }
 
     //Separate because flywheel needs time to rev
     public void FlywheelMovement(double input)
     {
-        double speed = 0.935 - Range.scale(battery.getVoltage(), 0, 13, 0, 0.935);
-        flywheel.setPower(speed);
+        double targetRpt = input * FLYWHEEL_RPT;
+        double currentTickRotations =  flywheel.getCurrentPosition() / flywheel.getMotorType().getTicksPerRev() - lastTickRotations;
+        double error = targetRpt - currentTickRotations;
+
+        double P = FLYWHEEL_KP * error;
+        double D = FLYWHEEL_KD * (error - oldFlywheelError);
+        double I = 0;
+        I += FLYWHEEL_KI * error;
+
+        flywheel.setPower(P + I + D);
+        lastTickRotations = currentTickRotations;
+        oldFlywheelError = error;
     }
 
     public void TransferMovement(double input) {transfer.setPosition(input);}
