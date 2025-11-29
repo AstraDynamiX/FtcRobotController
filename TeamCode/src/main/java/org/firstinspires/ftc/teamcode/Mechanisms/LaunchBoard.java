@@ -15,14 +15,11 @@ import org.firstinspires.ftc.teamcode.OpModes.Global;
 
 public class LaunchBoard
 {
-<<<<<<< HEAD
     private final double FLYWHEEL_RPT = 6000 / 60 / 20; //Rotations per function call (50ms)
     private final double FLYWHEEL_KP = 0;
     private final double FLYWHEEL_KI = 0;
     private final double FLYWHEEL_KD = 0;
 
-=======
->>>>>>> parent of 154a0db (Update LaunchBoard)
     private DcMotor intake;
     private DcMotor flywheel;
     private Servo transfer;
@@ -40,13 +37,11 @@ public class LaunchBoard
     private IndexerState indexerState = IndexerState.IDLE;
     private double targetIndexerAngle = -2; //Offset
 
-<<<<<<< HEAD
+
     private double oldFlywheelError = 0;
     private double lastTickRotations = 0;
     private double flywheelI = 0;
 
-=======
->>>>>>> parent of 154a0db (Update LaunchBoard)
 
     public void init(HardwareMap hwMap)
     {
@@ -85,7 +80,6 @@ public class LaunchBoard
     //Separate because flywheel needs time to rev
     public void FlywheelMovement(double input)
     {
-<<<<<<< HEAD
         /*double targetRpt = input * FLYWHEEL_RPT;
         double currentTickRotations =  flywheel.getCurrentPosition() / flywheel.getMotorType().getTicksPerRev() - lastTickRotations;
         double error = targetRpt - currentTickRotations;
@@ -98,10 +92,6 @@ public class LaunchBoard
         lastTickRotations = currentTickRotations;
         oldFlywheelError = error;*/
         flywheel.setPower(input);
-=======
-        double speed = 0.935 - Range.scale(battery.getVoltage(), 0, 13, 0, 0.935);
-        flywheel.setPower(speed);
->>>>>>> parent of 154a0db (Update LaunchBoard)
     }
 
     public void TransferMovement(double input) {transfer.setPosition(input);}
