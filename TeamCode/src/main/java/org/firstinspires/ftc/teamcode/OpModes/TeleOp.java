@@ -19,6 +19,7 @@ public class TeleOp extends OpMode {
     LaunchState launchState = LaunchState.IDLE;
     RevState revState = RevState.IDLE;
     ButtonHoldState buttonHoldState = ButtonHoldState.IDLE;
+    IntakeState intakeState = IntakeState.IDLE;
     ElapsedTime launchTimer = new ElapsedTime();
     ElapsedTime revTimer = new ElapsedTime();
     ElapsedTime buttonHoldTimer = new ElapsedTime();
@@ -43,11 +44,6 @@ public class TeleOp extends OpMode {
         OmniBoard.init(hardwareMap);
         LaunchBoard.init(hardwareMap);
         telemetry.addData("BOOTED:", "Welcome to AstraDynamiX Technologies!");
-
-        if (gamepad1.x) {Global.pattern = new double[]{2, 1, 1};}
-        if (gamepad1.a) {Global.pattern = new double[]{1, 2, 1};}
-        if (gamepad1.b) {Global.pattern = new double[]{1, 1, 2};}
-        telemetry.addData("PATTERN:", Global.pattern);
     }
 
     @Override
@@ -62,14 +58,14 @@ public class TeleOp extends OpMode {
                 MOTOR_MULTIPLIER * STRAFE_MULTIPLIER
         );
 
-        /*if (gamepad1.options && !options1Held)
+        if (gamepad1.options && !options1Held)
         {
             OmniBoard.SwitchDriveMode();
             options1Held = true; fieldCentric = !fieldCentric;
         }
         if (!gamepad1.options) {options1Held = false;}
 
-        if (gamepad1.share) {OmniBoard.ResetIMU();}*/
+        if (gamepad1.share) {OmniBoard.ResetIMU();}
 
         // ------ Mechanism controls ------
 
@@ -112,16 +108,14 @@ public class TeleOp extends OpMode {
         //Comments
         telemetry.addData("FLYWHEEL:", (isFlywheelReady) ? ((lowPowerFlywheel) ? "low power" : "ready") : "not ready");
         telemetry.addData("FIELD CENTRIC:", fieldCentric);
-        telemetry.addData("INDEXER SLOTS", Global.indexerSlots);
         telemetry.addData("", "");
-        telemetry.addData("IMU:", OmniBoard.GetHeading() / 3.141 + "π");
+        telemetry.addData("IMU:", OmniBoard.GetIntegratedHeading() / 3.141 + "π");
         telemetry.addData("INDEXER ANGLE", LaunchBoard.GetIndexerAngle());
+        telemetry.addData("TARGET ANGLE", LaunchBoard.GetTargetIndexerAngle());
 
         UpdateRev();
         UpdateLaunch();
         LaunchBoard.UpdateIndexerSpin();
-        LaunchBoard.UpdateIntake();
-        LaunchBoard.UpdateShooting();
     }
 
     // ------ state machines ------
@@ -222,6 +216,38 @@ public class TeleOp extends OpMode {
         }
     }
 
+
+    enum IntakeState
+    {
+        IDLE,
+        EATING,
+        SPINNING
+    }
+
+    public void UpdateIntake()
+    {
+        switch (intakeState)
+        {
+            case EATING:
+
+                LaunchBoard.FlywheelMovement(0.9 * ((lowPowerFlywheel) ? 0.6 : 1));
+                revTimer.reset();
+                break;
+
+            case SPINNING:
+
+                if (revTimer.milliseconds() >= 800) {isFlywheelReady = true;}
+                LaunchBoard.FlywheelMovement(0.9 * ((lowPowerFlywheel) ? 0.6 : 1));
+                break;
+
+            case IDLE:
+            default:
+
+                LaunchBoard.FlywheelMovement(0);
+                isFlywheelReady = false;
+                break;
+        }
+    }
 
 }
 
