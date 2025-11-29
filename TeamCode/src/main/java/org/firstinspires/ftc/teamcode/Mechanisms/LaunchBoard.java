@@ -55,7 +55,7 @@ public class LaunchBoard
         ballDistance = hwMap.get(DistanceSensor.class, "ballDistance");
         indexerAngle = hwMap.get(AnalogInput.class, "indexerAngle");
         //Default run mode
-        flywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        flywheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         intake.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
     }
 
@@ -79,7 +79,7 @@ public class LaunchBoard
     //Separate because flywheel needs time to rev
     public void FlywheelMovement(double input)
     {
-        double targetRpt = input * FLYWHEEL_RPT;
+        /*double targetRpt = input * FLYWHEEL_RPT;
         double currentTickRotations =  flywheel.getCurrentPosition() / flywheel.getMotorType().getTicksPerRev() - lastTickRotations;
         double error = targetRpt - currentTickRotations;
 
@@ -89,7 +89,8 @@ public class LaunchBoard
 
         flywheel.setPower(P + flywheelI + D);
         lastTickRotations = currentTickRotations;
-        oldFlywheelError = error;
+        oldFlywheelError = error;*/
+        flywheel.setPower(input);
     }
 
     public void TransferMovement(double input) {transfer.setPosition(input);}
