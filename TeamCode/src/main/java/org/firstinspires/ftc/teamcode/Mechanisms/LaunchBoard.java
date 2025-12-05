@@ -25,19 +25,25 @@ public class LaunchBoard
     private Servo transfer;
     private CRServo indexer;
 
-    private ColorSensor ballColor;
-    private DistanceSensor ballDistance;
+    public ColorSensor ballColor;
+    public DistanceSensor ballDistance;
     private AnalogInput indexerAngle;
 
+    private boolean isShooting = true; //Start with intake
 
-    private boolean isShooting = false;
+    private boolean ballEntered = false;
     IntakeState intakeState = IntakeState.IDLE;
+    ElapsedTime intakeTimer = new ElapsedTime();
+
     ShootingState shootingState = ShootingState.IDLE;
     ElapsedTime transferTimer = new ElapsedTime();
+
     private IndexerState indexerState = IndexerState.IDLE;
-    private double targetIndexerAngle = -2; //Offset
+    private double targetIndexerAngle = 60; //Offset
+    private boolean mustReachZero = false;
 
     private double oldFlywheelError = 0;
+    private double currentTickRotations;
     private double lastTickRotations = 0;
     private double flywheelI = 0;
 
@@ -57,6 +63,8 @@ public class LaunchBoard
         //Default run mode
         flywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         intake.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        SwitchMode();
     }
 
     public void SwitchMode()
@@ -64,23 +72,26 @@ public class LaunchBoard
         isShooting = !isShooting;
         if (isShooting)
         {
+            FlywheelMovement(0.8);
             targetIndexerAngle += 60;
             if (intakeState != IntakeState.FULL) {intakeState = IntakeState.IDLE;}
             shootingState = ShootingState.TRANSFER_UP;
         }
         else
         {
+            FlywheelMovement(0);
             targetIndexerAngle -= 60;
             if (intakeState != IntakeState.FULL) {intakeState = IntakeState.EATING;}
             shootingState = ShootingState.IDLE;
         }
+        targetIndexerAngle -= 120; //Gets added back when calling StartIndexerSpin();
+        StartIndexerSpin();
     }
 
-    //Separate because flywheel needs time to rev
     public void FlywheelMovement(double input)
     {
         double targetRpt = input * FLYWHEEL_RPT;
-        double currentTickRotations =  flywheel.getCurrentPosition() / flywheel.getMotorType().getTicksPerRev() - lastTickRotations;
+        currentTickRotations = flywheel.getCurrentPosition() / flywheel.getMotorType().getTicksPerRev() - lastTickRotations;
         double error = targetRpt - currentTickRotations;
 
         double P = FLYWHEEL_KP * error;
@@ -92,6 +103,8 @@ public class LaunchBoard
         oldFlywheelError = error;
     }
 
+    public double GetCurrentTickRotations() {return currentTickRotations;}
+
     public void TransferMovement(double input) {transfer.setPosition(input);}
 
     public void IntakeMovement(double input) {intake.setPower(input);}
@@ -100,9 +113,9 @@ public class LaunchBoard
     {
         //Normalize RGB values to range [0, 1]
         double hue;
-        float red = sensor.red() / 255f;
-        float green = sensor.green() / 255f;
-        float blue = sensor.blue() / 255f;
+        float red = sensor.red() / 550f;
+        float green = sensor.green() / 600f; //Sensor seems to have a bias towards green
+        float blue = sensor.blue() / 550f;
 
         // Find the maximum and minimum values among RGB
         float maxColor = Math.max(red, Math.max(green, blue));
@@ -115,7 +128,6 @@ public class LaunchBoard
         else if (maxColor == green) {hue = ((blue - red) / deltaColor) + 2;}
         else {hue = ((red - green) / deltaColor) + 4;}
 
-        //
         hue *= 60;
         if (hue < 0) {hue += 360;}
 
@@ -137,32 +149,53 @@ public class LaunchBoard
         {
             case EATING:
 
-                if (indexerState == IndexerState.SPINNING) {break;}
-
-                IntakeMovement(-0.6);
-                if (ballDistance.getDistance(DistanceUnit.CM) < 10)
+                if (indexerState == IndexerState.IDLE)
                 {
-                    if (ReadHue(ballColor) >= 130 && ReadHue(ballColor) <= 150)
-                    {Global.indexerSlots[Global.currentSlot] = 2;} //gren
-                    else /*if (ReadHue(ballColor) >= 270 && ReadHue(ballColor) <= 285)*/
-                    {Global.indexerSlots[Global.currentSlot] = 1;} //puple
+                    IntakeMovement(-0.6);
 
-                    intakeState = IntakeState.SPINNING;
+                    double distance = ballDistance.getDistance(DistanceUnit.CM);
+                    double hue = ReadHue(ballColor);
+
+                    if (distance < 16) {
+                        ballEntered = true;
+                        //distance = 16 => closest to color sensor => highest hues
+                        if (hue >= 125 + (distance / 2) && hue <= 145 + (distance / 2)) {
+                            Global.indexerSlots[Global.currentSlot] = 2;
+                        } //gren
+                        else {
+                            Global.indexerSlots[Global.currentSlot] = 1;
+                        } //puple
+                    }
+                    //Wait for ball to enter indexer before stopping intake
+                    if (ballEntered && distance > 16)
+                    {
+                        intakeTimer.reset();
+                        ballEntered = false;
+                        intakeState = IntakeState.SPINNING;
+                    }
                 }
                 break;
 
             case SPINNING:
-
-                IntakeMovement(0);
-                StartIndexerSpin();
-                //Prevent activation of intake if indexer is full
-                boolean indexerFull = true;
-                for (int i = 0; i < 3; i++)
+                //Wait for ball to nestle in indexer before spinning it
+                if (intakeTimer.milliseconds() >= 250)
                 {
-                    if (Global.indexerSlots[i] == 0) {indexerFull = false; break;}
+                    IntakeMovement(0);
+                    StartIndexerSpin();
+                    //Prevent activation of intake if indexer is full
+                    boolean indexerFull = true;
+                    for (int i = 0; i < 3; i++) {
+                        if (Global.indexerSlots[i] == 0) {
+                            indexerFull = false;
+                            break;
+                        }
+                    }
+                    if (indexerFull) {
+                        intakeState = IntakeState.FULL;
+                    } else {
+                        intakeState = IntakeState.EATING;
+                    }
                 }
-                if (indexerFull) {intakeState = IntakeState.FULL;}
-                else {intakeState = IntakeState.EATING;}
                 break;
 
             case FULL:
@@ -239,23 +272,29 @@ public class LaunchBoard
     {
         indexerState = IndexerState.SPINNING;
         targetIndexerAngle += 120;
-        if (targetIndexerAngle == 480) targetIndexerAngle = 120;
+        if (targetIndexerAngle >= 360)
+        {
+            targetIndexerAngle -= 360;
+            mustReachZero = true;
+        }
     }
 
-    public double GetIndexerAngle() {return Range.scale(indexerAngle.getVoltage(), 0, indexerAngle.getMaxVoltage(), 0, 360);}
+    public double GetIndexerAngle() {return targetIndexerAngle;}
 
     public void UpdateIndexerSpin()
     {
         switch (indexerState) {
             case SPINNING:
                 indexer.setPower(-0.6);
-                double adjustedTarget = Range.scale(indexerAngle.getVoltage(), 0, indexerAngle.getMaxVoltage(), 0, 360);
-                if (adjustedTarget >= targetIndexerAngle)
+                double adjustedAngle = Range.scale(indexerAngle.getVoltage(), 0, indexerAngle.getMaxVoltage(), 0, 360);
+                if (adjustedAngle >= targetIndexerAngle && !mustReachZero)
                 {
                     Global.currentSlot++;
                     if (Global.currentSlot >= 3) {Global.currentSlot = 0;}
                     indexerState = IndexerState.IDLE;
                 }
+                else if (mustReachZero && adjustedAngle > 0 && adjustedAngle < 45)
+                {mustReachZero = false;}
                 break;
 
             case IDLE:
