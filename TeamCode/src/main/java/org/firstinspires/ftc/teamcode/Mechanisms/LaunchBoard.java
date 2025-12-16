@@ -15,10 +15,11 @@ import org.firstinspires.ftc.teamcode.OpModes.Global;
 
 public class LaunchBoard
 {
-    private final double FLYWHEEL_RPT = 6000 / 60 / 20; //Rotations per function call (50ms)
     private final double FLYWHEEL_KP = 0;
     private final double FLYWHEEL_KI = 0;
     private final double FLYWHEEL_KD = 0;
+
+    private double INDEXER_TURN = 120;
 
     private DcMotor intake;
     private DcMotor flywheel;
@@ -29,28 +30,31 @@ public class LaunchBoard
     public DistanceSensor ballDistance;
     private AnalogInput indexerAngle;
 
-    private boolean isShooting = true; //Start with intake
+    public boolean isShooting = true; //Start with intake
 
-    private boolean ballEntered = false;
     IntakeState intakeState = IntakeState.IDLE;
     ElapsedTime intakeTimer = new ElapsedTime();
+    private boolean ballEntered = false;
 
     ShootingState shootingState = ShootingState.IDLE;
     ElapsedTime transferTimer = new ElapsedTime();
 
-    private IndexerState indexerState = IndexerState.IDLE;
-    private double targetIndexerAngle = 60; //Offset
-    private boolean mustReachZero = false;
+    private boolean indexerSpinning = false;
+    private double targetIndexerAngle = 180; //Offset
+    private boolean mustReachZero = true;
 
+    ElapsedTime flywheelTime = new ElapsedTime();
+    private double prevFlywheelSnapshot = 0;
     private double oldFlywheelError = 0;
-    private double currentTickRotations;
-    private double lastTickRotations = 0;
+    private double currentSnapshotRps;
+    private double lastSnapshotRps = 0;
     private double flywheelI = 0;
 
 
     public void init(HardwareMap hwMap)
     {
         Global.indexerSlots = new double[]{0, 0, 0};
+        Global.currentPatternSlot = 0;
         //Initializes motors and servos
         intake = hwMap.get(DcMotor.class, "intake");
         flywheel = hwMap.get(DcMotor.class, "flywheel");
@@ -65,6 +69,7 @@ public class LaunchBoard
         intake.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         SwitchMode();
+        intakeTimer.startTime();
     }
 
     public void SwitchMode()
@@ -73,41 +78,42 @@ public class LaunchBoard
         if (isShooting)
         {
             FlywheelMovement(0.8);
-            targetIndexerAngle += 60;
+            targetIndexerAngle += INDEXER_TURN / 2;
             if (intakeState != IntakeState.FULL) {intakeState = IntakeState.IDLE;}
             shootingState = ShootingState.TRANSFER_UP;
         }
         else
         {
             FlywheelMovement(0);
-            targetIndexerAngle -= 60;
+            targetIndexerAngle -= INDEXER_TURN / 2;
             if (intakeState != IntakeState.FULL) {intakeState = IntakeState.EATING;}
             shootingState = ShootingState.IDLE;
         }
-        targetIndexerAngle -= 120; //Gets added back when calling StartIndexerSpin();
+        targetIndexerAngle -= INDEXER_TURN; //Gets added back when calling StartIndexerSpin();
         StartIndexerSpin();
     }
 
     public void FlywheelMovement(double input)
     {
-        double targetRpt = input * FLYWHEEL_RPT;
-        currentTickRotations = flywheel.getCurrentPosition() / flywheel.getMotorType().getTicksPerRev() - lastTickRotations;
-        double error = targetRpt - currentTickRotations;
+
+        /*double flywheelDeltaTime = flywheelTime.seconds() - prevFlywheelSnapshot;
+        double targetRps = input * (flywheel.getMotorType().getMaxRPM() / 60);
+        currentSnapshotRps = (flywheel.getCurrentPosition() / flywheel.getMotorType().getTicksPerRev()) / flywheelDeltaTime) - lastSnapshotRps;
+        double error = targetRps - currentSnapshotRps;
 
         double P = FLYWHEEL_KP * error;
         double D = FLYWHEEL_KD * (error - oldFlywheelError);
         flywheelI += FLYWHEEL_KI * error;
 
         flywheel.setPower(P + flywheelI + D);
-        lastTickRotations = currentTickRotations;
-        oldFlywheelError = error;
+        lastSnapshotRps = currentSnapshotRps;
+        oldFlywheelError = error;*/
+        flywheel.setPower(input);
     }
 
-    public double GetCurrentTickRotations() {return currentTickRotations;}
+    public double GetCurrentSnapshotRps() {return currentSnapshotRps;}
 
-    public void TransferMovement(double input) {transfer.setPosition(input);}
-
-    public void IntakeMovement(double input) {intake.setPower(input);}
+    public boolean GetIndexerState() {return indexerSpinning;}
 
     public double ReadHue(ColorSensor sensor)
     {
@@ -149,53 +155,53 @@ public class LaunchBoard
         {
             case EATING:
 
-                if (indexerState == IndexerState.IDLE)
+                if (indexerSpinning) {break;}
+
+                intake.setPower(-0.6);
+
+                double distance = ballDistance.getDistance(DistanceUnit.CM);
+                double hue = ReadHue(ballColor);
+
+                if (distance < 16)
                 {
-                    IntakeMovement(-0.6);
-
-                    double distance = ballDistance.getDistance(DistanceUnit.CM);
-                    double hue = ReadHue(ballColor);
-
-                    if (distance < 16) {
-                        ballEntered = true;
-                        //distance = 16 => closest to color sensor => highest hues
-                        if (hue >= 125 + (distance / 2) && hue <= 145 + (distance / 2)) {
-                            Global.indexerSlots[Global.currentSlot] = 2;
-                        } //gren
-                        else {
-                            Global.indexerSlots[Global.currentSlot] = 1;
-                        } //puple
-                    }
-                    //Wait for ball to enter indexer before stopping intake
-                    if (ballEntered && distance > 16)
-                    {
-                        intakeTimer.reset();
-                        ballEntered = false;
-                        intakeState = IntakeState.SPINNING;
-                    }
+                    ballEntered = true;
+                    //distance = 16 => closest to color sensor => highest hues
+                    if (hue >= 125 + (distance / 3) && hue <= 145 + (distance / 3)) {
+                        Global.indexerSlots[Global.currentSlot] = 2;
+                    } //gren
+                    else {
+                        Global.indexerSlots[Global.currentSlot] = 1;
+                    } //puple
                 }
+                //Wait for ball to enter indexer before stopping intake
+                if (ballEntered && distance > 16)
+                {
+                    intakeTimer.reset();
+                    ballEntered = false;
+                    intakeState = IntakeState.SPINNING;
+                }
+
                 break;
 
             case SPINNING:
                 //Wait for ball to nestle in indexer before spinning it
-                if (intakeTimer.milliseconds() >= 250)
+                if (intakeTimer.milliseconds() <= 300) {break;}
+
+                intake.setPower(0);
+                StartIndexerSpin();
+                //Prevent activation of intake if indexer is full
+                boolean indexerFull = true;
+                for (int i = 0; i < 3; i++)
                 {
-                    IntakeMovement(0);
-                    StartIndexerSpin();
-                    //Prevent activation of intake if indexer is full
-                    boolean indexerFull = true;
-                    for (int i = 0; i < 3; i++) {
-                        if (Global.indexerSlots[i] == 0) {
-                            indexerFull = false;
-                            break;
-                        }
-                    }
-                    if (indexerFull) {
-                        intakeState = IntakeState.FULL;
-                    } else {
-                        intakeState = IntakeState.EATING;
+                    if (Global.indexerSlots[i] == 0)
+                    {
+                        indexerFull = false;
+                        break;
                     }
                 }
+                if (indexerFull) {intakeState = IntakeState.FULL;}
+                else {intakeState = IntakeState.EATING;}
+
                 break;
 
             case FULL:
@@ -219,30 +225,36 @@ public class LaunchBoard
     {
         switch (shootingState)
         {
+
             case TRANSFER_UP:
 
-                if (indexerState == IndexerState.SPINNING) {break;}
+                if (indexerSpinning) {break;}
                 if (Global.indexerSlots[Global.currentSlot] != Global.pattern[Global.currentPatternSlot])
                 {shootingState = ShootingState.SPINNING; break;}
 
-                TransferMovement(0.35);
+                transfer.setPosition(0.7);
                 transferTimer.reset();
 
                 Global.indexerSlots[Global.currentSlot] = 0;
+                Global.currentPatternSlot++;
+                if (Global.currentPatternSlot >= 3) {Global.currentPatternSlot = 0;}
+
                 shootingState = ShootingState.TRANSFER_DOWN;
                 break;
 
             case TRANSFER_DOWN:
 
-                if (transferTimer.milliseconds() <= 300) {break;}
-                TransferMovement(0.1);
+                if (transferTimer.milliseconds() <= 500) {break;}
+
+                transfer.setPosition(0.3);
                 transferTimer.reset();
                 shootingState = ShootingState.SPINNING;
                 break;
 
             case SPINNING:
 
-                if (transferTimer.milliseconds() <= 300) {break;}
+                if (transferTimer.milliseconds() <= 400) {break;}
+
                 StartIndexerSpin();
                 //Switch back to intake mode if indexer is empty
                 boolean indexerEmpty = true;
@@ -250,7 +262,7 @@ public class LaunchBoard
                 {
                     if (Global.indexerSlots[i] != 0) {indexerEmpty = false; break;}
                 }
-                if (indexerEmpty) {shootingState = ShootingState.IDLE;}
+                if (indexerEmpty) {SwitchMode();}
                 else {shootingState = ShootingState.TRANSFER_UP;}
                 break;
 
@@ -270,37 +282,34 @@ public class LaunchBoard
 
     public void StartIndexerSpin()
     {
-        indexerState = IndexerState.SPINNING;
-        targetIndexerAngle += 120;
+        targetIndexerAngle += INDEXER_TURN;
         if (targetIndexerAngle >= 360)
         {
             targetIndexerAngle -= 360;
             mustReachZero = true;
         }
+        indexerSpinning = true;
     }
 
-    public double GetIndexerAngle() {return targetIndexerAngle;}
+    public double GetIndexerAngle() {return Range.scale(indexerAngle.getVoltage(), 0, indexerAngle.getMaxVoltage(), 0, 360);}
+    public double GetTargetIndexerAngle() {return targetIndexerAngle;}
 
     public void UpdateIndexerSpin()
     {
-        switch (indexerState) {
-            case SPINNING:
-                indexer.setPower(-0.6);
-                double adjustedAngle = Range.scale(indexerAngle.getVoltage(), 0, indexerAngle.getMaxVoltage(), 0, 360);
-                if (adjustedAngle >= targetIndexerAngle && !mustReachZero)
-                {
-                    Global.currentSlot++;
-                    if (Global.currentSlot >= 3) {Global.currentSlot = 0;}
-                    indexerState = IndexerState.IDLE;
+        if (indexerSpinning)
+        {
+            indexer.setPower(-0.6);
+            double adjustedAngle = Range.scale(indexerAngle.getVoltage(), 0, indexerAngle.getMaxVoltage(), 0, 360);
+            if (adjustedAngle >= targetIndexerAngle && !mustReachZero) {
+                Global.currentSlot++;
+                if (Global.currentSlot >= 3) {
+                    Global.currentSlot = 0;
                 }
-                else if (mustReachZero && adjustedAngle > 0 && adjustedAngle < 45)
-                {mustReachZero = false;}
-                break;
-
-            case IDLE:
-            default:
-                indexer.setPower(0);
-                break;
+                indexerSpinning = false;
+            } else if (mustReachZero && adjustedAngle > 0 && adjustedAngle < 45) {
+                mustReachZero = false;
+            }
         }
+        else {indexer.setPower(0);}
     }
 }

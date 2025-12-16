@@ -10,11 +10,13 @@ import com.qualcomm.robotcore.hardware.Servo;
 public class ServoIndividualTest extends OpMode
 {
     private Servo servo;
+    private CRServo crServo;
 
     @Override
     public void init()
     {
         servo = hardwareMap.get(Servo.class, "transfer");
+        crServo = hardwareMap.get(CRServo.class, "angleAdjuster");
     }
 
     @Override
@@ -30,6 +32,10 @@ public class ServoIndividualTest extends OpMode
         if (gamepad1.dpad_right) servo.setPosition(0.8);
         if (gamepad1.dpad_up) servo.setPosition(0.9);
         if (gamepad1.dpad_left) servo.setPosition(1);
+
+        if (gamepad1.left_trigger > 0.5) {crServo.setPower(0.3);}
+        else if (gamepad1.right_trigger > 0.5) {crServo.setPower(-0.3);}
+        else {crServo.setPower(0);}
     }
 }
 

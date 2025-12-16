@@ -42,17 +42,24 @@ public class TeleOp extends OpMode {
         LaunchBoard.init(hardwareMap);
         telemetry.addData("BOOTED:", "Welcome to AstraDynamiX Technologies!");
 
+        Global.pattern = new double[]{2, 1, 1};
+    }
+
+    @Override
+    public void init_loop()
+    {
         if (gamepad1.x) {Global.pattern = new double[]{2, 1, 1};}
         if (gamepad1.a) {Global.pattern = new double[]{1, 2, 1};}
         if (gamepad1.b) {Global.pattern = new double[]{1, 1, 2};}
-        telemetry.addData("PATTERN:", Global.pattern);
+
+        double pattern = Global.pattern[0] * 100 + Global.pattern[1] * 10 + Global.pattern[2];
+        telemetry.addData("PATTERN:", pattern);
     }
 
     @Override
     public void loop()
     {
         // ------ Chassis movement ------
-
         OmniBoard.ChassisMovement(
                 gamepad1.left_stick_y * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
                 gamepad1.left_stick_x * (MOTOR_MULTIPLIER*STRAFE_MULTIPLIER) / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
@@ -79,25 +86,28 @@ public class TeleOp extends OpMode {
         if (!gamepad1.a) {aHeld = false;}
 
         //Flywheel revving and low power mode
-        /*if (gamepad1.left_bumper && !leftBumperHeld)
+        if (gamepad1.left_bumper && !leftBumperHeld)
         {
             if (revState == RevState.IDLE) {revState = RevState.REVVING;}
             else {lowPowerFlywheel = !lowPowerFlywheel;}
             leftBumperHeld = true;
         }
         if (!gamepad1.left_bumper) {leftBumperHeld = false;}
-        if (UpdateButtonHold(gamepad1.left_bumper)) {revState = RevState.IDLE;}*/
+        if (UpdateButtonHold(gamepad1.left_bumper)) {revState = RevState.IDLE;}
 
         //Comments
-        telemetry.addData("FLYWHEEL:", (isFlywheelReady) ? ((lowPowerFlywheel) ? "low power" : "ready") : "not ready");
-        telemetry.addData("FIELD CENTRIC:", fieldCentric);
+        telemetry.addData("FIELD CENTRIC", fieldCentric);
         double indexerSlots = Global.indexerSlots[0] * 100 + Global.indexerSlots[1] * 10 + Global.indexerSlots[2];
-        telemetry.addData("CURRENT SLOT VALUE", indexerSlots);
+        telemetry.addData("SLOT VALUES", indexerSlots);
         telemetry.addData("CURRENT SLOT", Global.currentSlot);
+        telemetry.addData("IS SHOOTING", LaunchBoard.isShooting);
+        telemetry.addData("INDEXER SPINNING", LaunchBoard.GetIndexerState());
         telemetry.addData("", "");
-        telemetry.addData("TARGET INDEXER ANGLE:", LaunchBoard.GetIndexerAngle());
+        telemetry.addData("CURRENT INDEXER ANGLE", LaunchBoard.GetIndexerAngle());
+        telemetry.addData("TARGET INDEXER ANGLE", LaunchBoard.GetTargetIndexerAngle());
         //telemetry.addData("IMU:", OmniBoard.GetHeading() / 3.141 + "π");
         //telemetry.addData("CURRENT TICK ROT:", LaunchBoard.GetCurrentTickRotations());
+        //telemetry.addData("TARGET TICK ROT:", LaunchBoard.GetCurrentTickRotations());
 
         UpdateRev();
         LaunchBoard.UpdateIndexerSpin();
