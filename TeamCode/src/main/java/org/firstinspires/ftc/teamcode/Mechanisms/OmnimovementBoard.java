@@ -1,4 +1,5 @@
 package org.firstinspires.ftc.teamcode.Mechanisms;
+import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -8,10 +9,11 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
+@Configurable
 public class OmnimovementBoard
 {
-    private final double IMU_KP = 0.125;
-    private final double IMU_KD = 0.075;
+    public static double IMU_KP = 0.2;
+    public static double IMU_KD = 0.075;
 
     private DcMotor leftFrontWheel;
     private DcMotor rightFrontWheel;
