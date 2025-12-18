@@ -16,8 +16,8 @@ public class TeleOp extends OpMode {
     OmnimovementBoard OmniBoard = new OmnimovementBoard();
     LaunchBoard LaunchBoard = new LaunchBoard();
     //State machines
-    RevState revState = RevState.IDLE;
-    ButtonHoldState buttonHoldState = ButtonHoldState.IDLE;
+    //RevState revState = RevState.IDLE;
+    //ButtonHoldState buttonHoldState = ButtonHoldState.IDLE;
     ElapsedTime revTimer = new ElapsedTime();
     ElapsedTime buttonHoldTimer = new ElapsedTime();
 
@@ -86,14 +86,14 @@ public class TeleOp extends OpMode {
         if (!gamepad1.a) {aHeld = false;}
 
         //Flywheel revving and low power mode
-        if (gamepad1.left_bumper && !leftBumperHeld)
+        /*if (gamepad1.left_bumper && !leftBumperHeld)
         {
             if (revState == RevState.IDLE) {revState = RevState.REVVING;}
             else {lowPowerFlywheel = !lowPowerFlywheel;}
             leftBumperHeld = true;
         }
         if (!gamepad1.left_bumper) {leftBumperHeld = false;}
-        if (UpdateButtonHold(gamepad1.left_bumper)) {revState = RevState.IDLE;}
+        if (UpdateButtonHold(gamepad1.left_bumper)) {revState = RevState.IDLE;}*/
 
         //Comments
         telemetry.addData("FIELD CENTRIC", fieldCentric);
@@ -102,14 +102,16 @@ public class TeleOp extends OpMode {
         telemetry.addData("CURRENT SLOT", Global.currentSlot);
         telemetry.addData("IS SHOOTING", LaunchBoard.isShooting);
         telemetry.addData("INDEXER SPINNING", LaunchBoard.GetIndexerState());
+        telemetry.addData("MUST REACH ZERO", LaunchBoard.GetMustReachZero());
         telemetry.addData("", "");
         telemetry.addData("CURRENT INDEXER ANGLE", LaunchBoard.GetIndexerAngle());
         telemetry.addData("TARGET INDEXER ANGLE", LaunchBoard.GetTargetIndexerAngle());
+        telemetry.addData("INDEXER POWER", LaunchBoard.GetIndexerPower());
         //telemetry.addData("IMU:", OmniBoard.GetHeading() / 3.141 + "π");
         //telemetry.addData("CURRENT TICK ROT:", LaunchBoard.GetCurrentTickRotations());
         //telemetry.addData("TARGET TICK ROT:", LaunchBoard.GetCurrentTickRotations());
 
-        UpdateRev();
+        //UpdateRev();
         LaunchBoard.UpdateIndexerSpin();
         LaunchBoard.UpdateIntake();
         LaunchBoard.UpdateShooting();
@@ -117,7 +119,7 @@ public class TeleOp extends OpMode {
 
     // ------ state machines ------
 
-    enum ButtonHoldState
+    /*enum ButtonHoldState
     {
         IDLE,
         PRESSED
@@ -172,7 +174,7 @@ public class TeleOp extends OpMode {
                 revTimer.reset();
                 break;
         }
-    }
+    }*/
 
 }
 

@@ -4,10 +4,11 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.teamcode.Mechanisms.ColorPipeline;
 import org.openftc.easyopencv.*;
 
-@TeleOp(name="Color Recognition")
-public class ColorRecognition extends LinearOpMode {
+@TeleOp(group="tests")
+public class CameraColorRecognition extends LinearOpMode {
 
     OpenCvWebcam webcam;
     ColorPipeline pipeline;
