@@ -14,11 +14,14 @@ public class MotorIndividualTest extends OpMode
     private DcMotor leftBack;
     private DcMotor rightBack;
 
+    double multiplier = 0.5;
+    boolean upHeld = false;
+    boolean downHeld = false;
     @Override
     public void init()
     {
-        leftFront = hardwareMap.get(DcMotor.class, "flWheel");
-        rightFront = hardwareMap.get(DcMotor.class, "frWheel");
+        leftFront = hardwareMap.get(DcMotor.class, /*"flWheel"*/"intake");
+        rightFront = hardwareMap.get(DcMotor.class, /*"frWheel"*/"flywheel");
         leftBack = hardwareMap.get(DcMotor.class, "blWheel");
         rightBack = hardwareMap.get(DcMotor.class, "brWheel");
 
@@ -36,9 +39,26 @@ public class MotorIndividualTest extends OpMode
     @Override
     public void loop()
     {
-        leftFront.setPower(gamepad1.left_trigger * 0.6);
-        rightFront.setPower(gamepad1.right_trigger * 0.6);
-        leftBack.setPower((gamepad1.left_bumper) ? 0.6 : 0);
-        rightBack.setPower((gamepad1.right_bumper) ? 0.6 : 0);
+        leftFront.setPower(gamepad1.left_trigger * multiplier);
+        rightFront.setPower(gamepad1.right_trigger * multiplier);
+        leftBack.setPower((gamepad1.left_bumper) ? multiplier : 0);
+        rightBack.setPower((gamepad1.right_bumper) ? multiplier : 0);
+
+        if (gamepad1.dpad_up && !upHeld)
+        {
+            upHeld = true;
+            multiplier += 0.05;
+        }
+        if (!gamepad1.dpad_up) {upHeld = false;}
+
+        if (gamepad1.dpad_down && !downHeld)
+        {
+            downHeld = true;
+            multiplier -= 0.05;
+        }
+        if (!gamepad1.dpad_down) {downHeld = false;}
+
+        telemetry.addData("Power: ",multiplier);
+
     }
 }
