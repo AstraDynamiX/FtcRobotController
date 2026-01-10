@@ -16,7 +16,7 @@ public class ServoIndividualTest extends OpMode
     public void init()
     {
         servo = hardwareMap.get(Servo.class, "transfer");
-        crServo = hardwareMap.get(CRServo.class, "angleAdjuster");
+        crServo = hardwareMap.get(CRServo.class, "indexer");
     }
 
     @Override

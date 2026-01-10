@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.OpModes.Tests;
+/*package org.firstinspires.ftc.teamcode.OpModes.Tests;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -48,4 +48,4 @@ public class ColorSensorTest extends OpMode
         telemetry.addData("COLOR:", color);
 
     }
-}
+}*/

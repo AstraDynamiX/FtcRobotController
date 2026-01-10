@@ -1,38 +1,55 @@
 package org.firstinspires.ftc.teamcode.OpModes;
 
+import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.Mechanisms.CameraBoard;
 import org.firstinspires.ftc.teamcode.Mechanisms.LaunchBoard;
 import org.firstinspires.ftc.teamcode.Mechanisms.OmnimovementBoard;
 
+import java.util.List;
 
+@Configurable
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "TeleOp_DECODE")
 public class TeleOp extends OpMode {
 
-    private final double MOTOR_MULTIPLIER = 0.8;
+    private final double MOTOR_MULTIPLIER = 0.85 * 11 / 8;
     private final double STRAFE_MULTIPLIER = 1.4;
+
+    public static double FLYWHEEL_CAMERA_WEIGHT = 0.0085;
+    public static double FLYWHEEL_CAMERA_BIAS = 30;
 
     OmnimovementBoard OmniBoard = new OmnimovementBoard();
     LaunchBoard LaunchBoard = new LaunchBoard();
-    //State machines
-    RevState revState = RevState.IDLE;
-    ButtonHoldState buttonHoldState = ButtonHoldState.IDLE;
-    ElapsedTime revTimer = new ElapsedTime();
-    ElapsedTime buttonHoldTimer = new ElapsedTime();
+    CameraBoard CamBoard = new CameraBoard();
+
+    FlywheelState flywheelState = FlywheelState.IDLE;
+    private boolean isShooting = false;
+    private boolean intakeOn = false;
 
     //Flags for buttons
-    private boolean leftBumperHeld = false;
-    private boolean rightBumperHeld = false;
+    private boolean buttonHeld = false;
+    ElapsedTime buttonHoldTimer = new ElapsedTime();
+
     private boolean aHeld = false;
     private boolean bHeld = false;
+    private boolean leftBumperHeld = false;
+    private boolean rightBumperHeld = false;
+    private boolean upHeld = false;
+    private boolean downHeld = false;
+    private boolean rightHeld = false;
+    private boolean leftHeld = false;
     private boolean options1Held = false;
-    //Flags for mechanisms
-    private boolean lowPowerFlywheel = true;
-    private boolean isFlywheelReady = false;
-    private boolean isIntakeOn = false;
+    private boolean xHeld = false;
+    private boolean yHeld = false;
     //Other flags
     private boolean fieldCentric = false;
+
+    private double batteryVoltage = 12.7;
+    private double flywheelMultiplier = 0.8;
+    private double power;
+    private boolean camAdjustment = false;
 
 
     @Override
@@ -40,6 +57,7 @@ public class TeleOp extends OpMode {
     {
         OmniBoard.init(hardwareMap);
         LaunchBoard.init(hardwareMap);
+        CamBoard.init(hardwareMap);
         telemetry.addData("BOOTED:", "Welcome to AstraDynamiX Technologies!");
 
         Global.pattern = new double[]{2, 1, 1};
@@ -52,8 +70,23 @@ public class TeleOp extends OpMode {
         if (gamepad1.a) {Global.pattern = new double[]{1, 2, 1};}
         if (gamepad1.b) {Global.pattern = new double[]{1, 1, 2};}
 
+        if (gamepad1.dpad_up && !upHeld)
+        {
+            upHeld = true;
+            batteryVoltage += 0.1;
+        }
+        if (!gamepad1.dpad_up) {upHeld = false;}
+
+        if (gamepad1.dpad_down && !downHeld)
+        {
+            downHeld = true;
+            batteryVoltage -= 0.1;
+        }
+        if (!gamepad1.dpad_down) {downHeld = false;}
+
         double pattern = Global.pattern[0] * 100 + Global.pattern[1] * 10 + Global.pattern[2];
-        telemetry.addData("PATTERN:", pattern);
+        telemetry.addData("PATTERN", pattern);
+        telemetry.addData("BATTERY VOLTAGE", batteryVoltage);
     }
 
     @Override
@@ -67,6 +100,14 @@ public class TeleOp extends OpMode {
                 MOTOR_MULTIPLIER * STRAFE_MULTIPLIER
         );
 
+//        if (gamepad1.y && !yHeld)
+//        {
+//            OmniBoard.ChassisMovement();
+//            yHeld = true;
+//        }
+//        if (!gamepad1.y) {yHeld = false;}
+
+
         /*if (gamepad1.options && !options1Held)
         {
             OmniBoard.SwitchDriveMode();
@@ -78,101 +119,175 @@ public class TeleOp extends OpMode {
 
         // ------ Mechanism controls ------
 
+        if (gamepad1.options && !options1Held)
+        {
+            camAdjustment = !camAdjustment;
+            options1Held = true;
+        }
+        if (!gamepad1.options) {options1Held = false;}
+
+
+        //Flywheel
+        if (gamepad1.right_bumper && !rightBumperHeld)
+        {
+            rightBumperHeld = true;
+            if (flywheelState == FlywheelState.IDLE) {flywheelState = FlywheelState.FULL_POWER;}
+            else if (flywheelState == FlywheelState.FULL_POWER) {flywheelState = FlywheelState.LOW_POWER;}
+            else if (flywheelState == FlywheelState.LOW_POWER) {flywheelState = FlywheelState.FULL_POWER;}
+        }
+        if (!gamepad1.right_bumper) {rightBumperHeld = false;}
+        if (UpdateButtonHold(gamepad1.right_bumper)) {flywheelState = FlywheelState.IDLE;}
+
+        //Intake
+        if (gamepad1.left_bumper && !leftBumperHeld)
+        {
+            leftBumperHeld = true;
+            if (intakeOn) {LaunchBoard.IntakeMovement(0);}
+            else {LaunchBoard.IntakeMovement(-0.9);}
+            intakeOn = !intakeOn;
+        }
+        if (!gamepad1.left_bumper) {leftBumperHeld = false;}
+
+        if (gamepad1.b && !bHeld)
+        {
+            bHeld = true;
+            if (intakeOn) {LaunchBoard.IntakeMovement(0);}
+            else {LaunchBoard.IntakeMovement(0.75);}
+            intakeOn = !intakeOn;
+        }
+        if (!gamepad1.b) {bHeld = false;}
+
+        if (gamepad1.x && !xHeld)
+        {
+            xHeld = true;
+            LaunchBoard.LittleOuttake(0.8);
+        }
+        if(!gamepad1.x) {xHeld = false;}
+        LaunchBoard.updateLittleOuttake();
+
+        //Shooting
         if (gamepad1.a && !aHeld)
         {
             aHeld = true;
-            LaunchBoard.SwitchMode();
+            LaunchBoard.StartShooting();
         }
         if (!gamepad1.a) {aHeld = false;}
 
-        //Flywheel revving and low power mode
-        if (gamepad1.left_bumper && !leftBumperHeld)
+        //Flywheel power adjustment
+        if (gamepad1.dpad_up && !upHeld)
         {
-            if (revState == RevState.IDLE) {revState = RevState.REVVING;}
-            else {lowPowerFlywheel = !lowPowerFlywheel;}
-            leftBumperHeld = true;
+            upHeld = true;
+            flywheelMultiplier += 0.05;
         }
-        if (!gamepad1.left_bumper) {leftBumperHeld = false;}
-        if (UpdateButtonHold(gamepad1.left_bumper)) {revState = RevState.IDLE;}
+        if (!gamepad1.dpad_up) {upHeld = false;}
+
+        if (gamepad1.dpad_down && !downHeld)
+        {
+            downHeld = true;
+            flywheelMultiplier -= 0.05;
+        }
+        if (!gamepad1.dpad_down) {downHeld = false;}
+
+        if (gamepad1.dpad_right && !rightHeld)
+        {
+            rightHeld = true;
+            flywheelMultiplier += 0.01;
+        }
+        if (!gamepad1.dpad_right) {rightHeld = false;}
+
+        if (gamepad1.dpad_left && !leftHeld)
+        {
+            leftHeld = true;
+            flywheelMultiplier -= 0.01;
+        }
+        if (!gamepad1.dpad_left) {leftHeld = false;}
+
 
         //Comments
-        telemetry.addData("FIELD CENTRIC", fieldCentric);
-        double indexerSlots = Global.indexerSlots[0] * 100 + Global.indexerSlots[1] * 10 + Global.indexerSlots[2];
-        telemetry.addData("SLOT VALUES", indexerSlots);
-        telemetry.addData("CURRENT SLOT", Global.currentSlot);
-        telemetry.addData("IS SHOOTING", LaunchBoard.isShooting);
-        telemetry.addData("INDEXER SPINNING", LaunchBoard.GetIndexerState());
+        //telemetry.addData("FIELD CENTRIC", fieldCentric);
+        //double indexerSlots = Global.indexerSlots[0] * 100 + Global.indexerSlots[1] * 10 + Global.indexerSlots[2];
+        //telemetry.addData("SLOT VALUES", indexerSlots);
+        //telemetry.addData("CURRENT SLOT", Global.currentSlot);
+        telemetry.addData("FLYWHEEL STATE", (flywheelState == FlywheelState.FULL_POWER) ? "full power" : "low power");
+        telemetry.addData("FLYWHEEL MULTIPLIER", flywheelMultiplier);
         telemetry.addData("", "");
-        telemetry.addData("CURRENT INDEXER ANGLE", LaunchBoard.GetIndexerAngle());
-        telemetry.addData("TARGET INDEXER ANGLE", LaunchBoard.GetTargetIndexerAngle());
+        telemetry.addData("FLYWHEEL POWER", power*0.875);
+        telemetry.addData("CAM ADJUSTMENT", camAdjustment);
+        if (!CamBoard.GetAprilTag().isEmpty())
+        {telemetry.addData("APRIL TAG DISTANCE", CamBoard.GetAprilTag().get(0));}
         //telemetry.addData("IMU:", OmniBoard.GetHeading() / 3.141 + "π");
         //telemetry.addData("CURRENT TICK ROT:", LaunchBoard.GetCurrentTickRotations());
         //telemetry.addData("TARGET TICK ROT:", LaunchBoard.GetCurrentTickRotations());
 
-        UpdateRev();
-        LaunchBoard.UpdateIndexerSpin();
+        UpdateFlywheel();
         LaunchBoard.UpdateIntake();
         LaunchBoard.UpdateShooting();
     }
 
     // ------ state machines ------
 
-    enum ButtonHoldState
+    public boolean UpdateButtonHold(boolean button)
     {
-        IDLE,
-        PRESSED
-    }
-
-    public boolean UpdateButtonHold(boolean buttonHeld)
-    {
-        switch (buttonHoldState)
+        if (buttonHeld)
         {
-            case PRESSED :
-
-                if (buttonHoldTimer.milliseconds() >= 350 && buttonHeld) {return true;}
-                else
-                {
-                    if (!buttonHeld) {buttonHoldState = ButtonHoldState.IDLE;}
-                    return false;
-                }
-
-            case IDLE :
-            default :
-
-                if (buttonHeld)
-                {
-                    buttonHoldTimer.reset();
-                    buttonHoldState = ButtonHoldState.PRESSED;
-                }
+            if (buttonHoldTimer.milliseconds() >= 350 && button) {return true;}
+            else
+            {
+                if (!button) {buttonHeld = false;}
                 return false;
+            }
+        }
+        else
+        {
+            if (button)
+            {
+                buttonHoldTimer.reset();
+                buttonHeld = true;
+            }
+            return false;
         }
     }
 
-    enum RevState
+    enum FlywheelState
     {
         IDLE,
-        REVVING,
+        FULL_POWER,
+        LOW_POWER
     }
 
-    public void UpdateRev()
+    public void UpdateFlywheel()
     {
-        switch (revState)
+        if (camAdjustment)
         {
-            case REVVING:
+            List<Double> tags = CamBoard.GetAprilTag();
+            if (!tags.isEmpty()) {power =
+                    -0.01 * FLYWHEEL_CAMERA_BIAS +
+                    -FLYWHEEL_CAMERA_WEIGHT * flywheelMultiplier *
+                    14 / batteryVoltage *
+                    tags.get(0);
+            }
+        }
+        else
+        {power = -flywheelMultiplier * 14 / batteryVoltage;}
 
-                if (revTimer.milliseconds() >= 800) {isFlywheelReady = true;}
-                LaunchBoard.FlywheelMovement(0.935 * ((lowPowerFlywheel) ? 0.65 : 1));
+        switch (flywheelState)
+        {
+            case FULL_POWER:
+
+                LaunchBoard.FlywheelMovement(power*0.9);
+                break;
+
+            case LOW_POWER:
+
+                LaunchBoard.FlywheelMovement(power*0.4);
                 break;
 
             case IDLE:
             default:
 
                 LaunchBoard.FlywheelMovement(0);
-                isFlywheelReady = false;
-                revTimer.reset();
                 break;
         }
     }
-
 }
 

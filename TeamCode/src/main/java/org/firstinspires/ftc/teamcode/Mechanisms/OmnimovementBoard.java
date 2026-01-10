@@ -1,4 +1,5 @@
 package org.firstinspires.ftc.teamcode.Mechanisms;
+import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -8,10 +9,11 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
+@Configurable
 public class OmnimovementBoard
 {
-    private final double IMU_KP = 0.125;
-    private final double IMU_KD = 0.075;
+    public static double IMU_KP = 3;
+    public static double IMU_KD = 5;
 
     private DcMotor leftFrontWheel;
     private DcMotor rightFrontWheel;
@@ -41,7 +43,7 @@ public class OmnimovementBoard
         imu = hwMap.get(IMU.class, "imu");
         IMU.Parameters parametres = new IMU.Parameters(new RevHubOrientationOnRobot(
                 RevHubOrientationOnRobot.LogoFacingDirection.RIGHT,
-                RevHubOrientationOnRobot.UsbFacingDirection.DOWN
+                RevHubOrientationOnRobot.UsbFacingDirection.BACKWARD
         ));
         imu.initialize(parametres);
         imu.resetYaw();
@@ -51,10 +53,10 @@ public class OmnimovementBoard
         leftBackWheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightBackWheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         //Reverse right motors because they are mirrored
-        leftFrontWheel.setDirection(DcMotorSimple.Direction.FORWARD);
-        leftBackWheel.setDirection(DcMotorSimple.Direction.FORWARD);
-        rightFrontWheel.setDirection(DcMotorSimple.Direction.REVERSE);
-        rightBackWheel.setDirection(DcMotorSimple.Direction.REVERSE);
+        leftFrontWheel.setDirection(DcMotorSimple.Direction.REVERSE);
+        leftBackWheel.setDirection(DcMotorSimple.Direction.REVERSE);
+        rightFrontWheel.setDirection(DcMotorSimple.Direction.FORWARD);
+        rightBackWheel.setDirection(DcMotorSimple.Direction.FORWARD);
     }
 
     public void ChassisMovement(double axial, double lateral, double yaw, double maxSpeed)
@@ -94,6 +96,7 @@ public class OmnimovementBoard
             PowerWheels(fedAxial, fedLateral, yaw, denominator);
         }
         oldError = error;
+        PowerWheels(axial, lateral, yaw, denominator);
     }
 
     public void PowerWheels(double axial, double lateral, double yaw, double denominator)
