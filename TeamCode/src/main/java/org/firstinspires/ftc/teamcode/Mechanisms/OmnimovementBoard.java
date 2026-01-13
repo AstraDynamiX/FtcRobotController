@@ -6,6 +6,8 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.seattlesolvers.solverslib.hardware.motors.Motor;
+import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
@@ -15,10 +17,10 @@ public class OmnimovementBoard
     public static double IMU_KP = 3;
     public static double IMU_KD = 5;
 
-    private DcMotor leftFrontWheel;
-    private DcMotor rightFrontWheel;
-    private DcMotor leftBackWheel;
-    private DcMotor rightBackWheel;
+    MotorEx leftFrontWheel;
+    MotorEx rightFrontWheel;
+    MotorEx leftBackWheel;
+    MotorEx rightBackWheel;
     private IMU imu;
 
     //State machine
@@ -34,12 +36,16 @@ public class OmnimovementBoard
 
     public void init(HardwareMap hwMap)
     {
-        //Initializes motors
-        leftFrontWheel = hwMap.get(DcMotor.class, "flWheel");
-        rightFrontWheel = hwMap.get(DcMotor.class, "frWheel");
-        leftBackWheel = hwMap.get(DcMotor.class, "blWheel");
-        rightBackWheel = hwMap.get(DcMotor.class, "brWheel");
+        leftFrontWheel = initMotor(hwMap, DcMotorSimple.Direction.FORWARD, "lfWheel",
+                0, 0, 0);
+        rightFrontWheel = initMotor(hwMap, DcMotorSimple.Direction.REVERSE, "rfWheel",
+                0, 0, 0);
+        leftBackWheel = initMotor(hwMap, DcMotorSimple.Direction.FORWARD, "lbWheel",
+                0, 0, 0);
+        rightBackWheel = initMotor(hwMap, DcMotorSimple.Direction.REVERSE, "rbWheel",
+                0, 0, 0);
 
+        //Set up IMU
         imu = hwMap.get(IMU.class, "imu");
         IMU.Parameters parametres = new IMU.Parameters(new RevHubOrientationOnRobot(
                 RevHubOrientationOnRobot.LogoFacingDirection.RIGHT,
@@ -47,16 +53,19 @@ public class OmnimovementBoard
         ));
         imu.initialize(parametres);
         imu.resetYaw();
-        //Default run mode
-        leftFrontWheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        rightFrontWheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        leftBackWheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        rightBackWheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        //Reverse right motors because they are mirrored
-        leftFrontWheel.setDirection(DcMotorSimple.Direction.REVERSE);
-        leftBackWheel.setDirection(DcMotorSimple.Direction.REVERSE);
-        rightFrontWheel.setDirection(DcMotorSimple.Direction.FORWARD);
-        rightBackWheel.setDirection(DcMotorSimple.Direction.FORWARD);
+    }
+
+    private MotorEx initMotor(
+            HardwareMap hwMap, DcMotorSimple.Direction direction, String name,
+            int kp, int ki, int kd
+    )
+    {
+        MotorEx motor;
+        motor = new MotorEx(hwMap, name, Motor.GoBILDA.RPM_435);
+        motor.setRunMode(MotorEx.RunMode.VelocityControl);
+        motor.setVeloCoefficients(kp, ki, kd);
+        motor.motor.setDirection(direction);
+        return motor;
     }
 
     public void ChassisMovement(double axial, double lateral, double yaw, double maxSpeed)
@@ -101,10 +110,10 @@ public class OmnimovementBoard
 
     public void PowerWheels(double axial, double lateral, double yaw, double denominator)
     {
-        leftFrontWheel.setPower(((axial - lateral - yaw) / denominator));
-        leftBackWheel.setPower(((axial + lateral - yaw) / denominator));
-        rightFrontWheel.setPower(((axial + lateral + yaw) / denominator));
-        rightBackWheel.setPower(((axial - lateral + yaw) / denominator));
+        leftFrontWheel.setVelocity(((axial - lateral - yaw) / denominator));
+        leftBackWheel.setVelocity(((axial + lateral - yaw) / denominator));
+        rightFrontWheel.setVelocity(((axial + lateral + yaw) / denominator));
+        rightBackWheel.setVelocity(((axial - lateral + yaw) / denominator));
     }
 
     public void SwitchDriveMode() {fieldCentric = !fieldCentric; IMUAngle = GetHeading();}
@@ -143,4 +152,5 @@ public class OmnimovementBoard
                 break;
         }
     }
+
 }
