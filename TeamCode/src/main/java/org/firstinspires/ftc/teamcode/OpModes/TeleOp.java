@@ -26,12 +26,6 @@ public class TeleOp extends OpMode {
     private boolean isShooting = false;
     private boolean intakeOn = false;
 
-    //PIDF AUTO MOVEMENT
-    private AutoMoveState autoState = AutoMoveState.IDLE;
-    private ElapsedTime autoTimer = new ElapsedTime();
-    public static double strafeTime = 1.5;
-    public static double strafePower = 0.6;
-
     //Flags for buttons
     private boolean buttonHeld = false;
     ElapsedTime buttonHoldTimer = new ElapsedTime();
@@ -95,23 +89,12 @@ public class TeleOp extends OpMode {
     @Override
     public void loop()
     {
-        OmniBoard.UpdateOdometry();
-        if (gamepad1.y && !yHeld){
-            yHeld = true;
-            StartAutoPIDF();
-        }
-        if(!gamepad1.y) {yHeld=false;}
-
-        UpdateAutoPIDF();
-        // ------ Chassis movement ------
-        if(autoState == AutoMoveState.IDLE){
         OmniBoard.ChassisMovement(
                 gamepad1.left_stick_y * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
                 gamepad1.left_stick_x * (MOTOR_MULTIPLIER*STRAFE_MULTIPLIER) / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
                 gamepad1.right_stick_x * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
                 MOTOR_MULTIPLIER * STRAFE_MULTIPLIER
         );
-        }
 
         /*if (gamepad1.options && !options1Held)
         {
@@ -228,73 +211,7 @@ public class TeleOp extends OpMode {
         LaunchBoard.UpdateIntake();
         LaunchBoard.UpdateShooting();
     }
-    enum AutoMoveState {
-        IDLE,
-        GOTO_LOCATION,
-        STRAFE_LEFT,
-        COMPLETE
-    }
-    private void StartAutoPIDF(){
-        OmniBoard.SetPIDFTarget(
-                OmniBoard.GetCurrentX() ,
-                OmniBoard.GetCurrentY(),
-                OmniBoard.GetHeading()
-        );
-        autoState = AutoMoveState.GOTO_LOCATION;
-        autoTimer.reset();
-        telemetry.addData("PIDF", "Started! Target set.");
-    }
-    private void UpdateAutoPIDF(){
-        switch (autoState){
-            case GOTO_LOCATION:
-                double[] movement = OmniBoard.CalculatePIDFMovement();
 
-                OmniBoard.ChassisMovement(
-                        movement[0],
-                        movement[1],
-                        movement[2],
-                        MOTOR_MULTIPLIER * STRAFE_MULTIPLIER
-                );
-
-                if(OmniBoard.IsAtTarget(2.0, Math.toRadians(2))){
-                    autoState = AutoMoveState.STRAFE_LEFT;
-                    autoTimer.reset();
-                }
-                break;
-            case STRAFE_LEFT:
-                double headingCorrection = OmniBoard.CalculateHeadingPIDF();
-
-                OmniBoard.ChassisMovement(
-                        0,
-                        -strafePower,
-                        headingCorrection,
-                        MOTOR_MULTIPLIER * STRAFE_MULTIPLIER
-                );
-
-                if(autoTimer.seconds() >= strafeTime){
-                    autoState = AutoMoveState.COMPLETE;
-                    autoTimer.reset();
-                }
-                break;
-            case COMPLETE:
-                OmniBoard.ChassisMovement(0, 0, 0, MOTOR_MULTIPLIER);
-
-                if(autoTimer.milliseconds() > 200){
-                    ClearPIDF();
-                }
-                break;
-            case IDLE:
-            default:
-                break;
-        }
-
-    }
-    private void ClearPIDF(){
-        autoState = AutoMoveState.IDLE;
-        OmniBoard.ClearPIDFTarget();
-
-        telemetry.addData("PIDF", "Cleared and returned to manual control!");
-    }
     // ------ state machines ------
 
     public boolean UpdateButtonHold(boolean button)
