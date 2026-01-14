@@ -36,13 +36,13 @@ public class OmnimovementBoard
 
     public void init(HardwareMap hwMap)
     {
-        leftFrontWheel = initMotor(hwMap, DcMotorSimple.Direction.FORWARD, "lfWheel",
+        leftFrontWheel = initMotor(hwMap, false, "flWheel",
                 0, 0, 0);
-        rightFrontWheel = initMotor(hwMap, DcMotorSimple.Direction.REVERSE, "rfWheel",
+        rightFrontWheel = initMotor(hwMap, true, "frWheel",
                 0, 0, 0);
-        leftBackWheel = initMotor(hwMap, DcMotorSimple.Direction.FORWARD, "lbWheel",
+        leftBackWheel = initMotor(hwMap, false, "blWheel",
                 0, 0, 0);
-        rightBackWheel = initMotor(hwMap, DcMotorSimple.Direction.REVERSE, "rbWheel",
+        rightBackWheel = initMotor(hwMap, true, "brWheel",
                 0, 0, 0);
 
         //Set up IMU
@@ -56,7 +56,7 @@ public class OmnimovementBoard
     }
 
     private MotorEx initMotor(
-            HardwareMap hwMap, DcMotorSimple.Direction direction, String name,
+            HardwareMap hwMap, boolean inverted, String name,
             int kp, int ki, int kd
     )
     {
@@ -64,7 +64,7 @@ public class OmnimovementBoard
         motor = new MotorEx(hwMap, name, Motor.GoBILDA.RPM_435);
         motor.setRunMode(MotorEx.RunMode.VelocityControl);
         motor.setVeloCoefficients(kp, ki, kd);
-        motor.motor.setDirection(direction);
+        motor.setInverted(inverted);
         return motor;
     }
 

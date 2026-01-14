@@ -19,13 +19,13 @@ public class MotorIndividualTest extends OpMode
     {
         leftFront = hardwareMap.get(DcMotor.class, "flWheel");
         rightFront = hardwareMap.get(DcMotor.class, "frWheel");
-        leftBack = hardwareMap.get(DcMotor.class, "blWheel");
+        leftBack = hardwareMap.get(DcMotor.class, "flywheel");
         rightBack = hardwareMap.get(DcMotor.class, "brWheel");
 
-        leftFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        rightFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        leftBack.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        rightBack.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rightFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        leftBack.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        rightBack.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
         leftBack.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -40,5 +40,10 @@ public class MotorIndividualTest extends OpMode
         rightFront.setPower(gamepad1.right_trigger * 0.6);
         leftBack.setPower((gamepad1.left_bumper) ? 0.6 : 0);
         rightBack.setPower((gamepad1.right_bumper) ? 0.6 : 0);
+
+        telemetry.addData("ENCODER", leftFront.getCurrentPosition());
+        telemetry.addData("ENCODER", rightFront.getCurrentPosition());
+        telemetry.addData("ENCODER", leftBack.getCurrentPosition());
+        telemetry.addData("ENCODER", rightBack.getCurrentPosition());
     }
 }
