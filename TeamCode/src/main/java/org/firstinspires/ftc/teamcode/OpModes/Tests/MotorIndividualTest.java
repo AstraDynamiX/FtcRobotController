@@ -18,9 +18,9 @@ public class MotorIndividualTest extends OpMode
     public void init()
     {
         leftFront = hardwareMap.get(DcMotor.class, "flWheel");
-        rightFront = hardwareMap.get(DcMotor.class, "frWheel");
-        leftBack = hardwareMap.get(DcMotor.class, "flywheel");
-        rightBack = hardwareMap.get(DcMotor.class, "brWheel");
+        rightFront = hardwareMap.get(DcMotor.class, "rightFlywheel");
+        leftBack = hardwareMap.get(DcMotor.class, "leftFlywheel");
+        rightBack = hardwareMap.get(DcMotor.class, "turret");
 
         leftFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         rightFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);

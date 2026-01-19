@@ -12,7 +12,6 @@ public class Autonomous extends OpMode
 {
     OmnimovementBoard OmniBoard = new OmnimovementBoard();
     LaunchBoard LaunchBoard = new LaunchBoard();
-    CameraBoard CamBoard = new CameraBoard();
 
     ElapsedTime timer = new ElapsedTime();
 
@@ -20,8 +19,7 @@ public class Autonomous extends OpMode
     private boolean upHeld = false;
     private boolean downHeld = false;
 
-    private boolean blueAlliance = true;
-    private double batteryVoltage = 12.7;
+    private boolean leftDirection = true;
 
     private double power = 0.7;
 
@@ -30,7 +28,6 @@ public class Autonomous extends OpMode
     {
         OmniBoard.init(hardwareMap);
         LaunchBoard.init(hardwareMap);
-        CamBoard.init(hardwareMap);
     }
 
     @Override
@@ -39,26 +36,11 @@ public class Autonomous extends OpMode
         if (gamepad1.a && !aHeld)
         {
             aHeld = true;
-            blueAlliance = !blueAlliance;
+            leftDirection = !leftDirection;
         }
         if (!gamepad1.a) {aHeld = false;}
 
-        if (gamepad1.dpad_up && !upHeld)
-        {
-            upHeld = true;
-            batteryVoltage += 0.1;
-        }
-        if (!gamepad1.dpad_up) {upHeld = false;}
-
-        if (gamepad1.dpad_down && !downHeld)
-        {
-            downHeld = true;
-            batteryVoltage -= 0.1;
-        }
-        if (!gamepad1.dpad_down) {downHeld = false;}
-
-        telemetry.addData("BATTERY VOLTAGE", batteryVoltage);
-        telemetry.addData("ALLIANCE", (blueAlliance) ? "blue" : "red");
+        telemetry.addData("DIRECTION", (leftDirection) ? "left" : "right");
     }
 
     @Override
@@ -66,9 +48,9 @@ public class Autonomous extends OpMode
     {
         timer.reset(); while (timer.milliseconds() < 10000) {}
 
-        power = (blueAlliance) ? -0.6 : 0.6;
+        power = (leftDirection) ? -0.7 : 0.7;
         OmniBoard.ChassisMovement(0, power, 0, 1);
-        timer.reset(); while (timer.milliseconds() < 1000) {}
+        timer.reset(); while (timer.milliseconds() < 850) {}
 
         OmniBoard.ChassisMovement(0, 0, 0, 1);
     }

@@ -14,8 +14,8 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 @Configurable
 public class OmnimovementBoard
 {
-    public static double IMU_KP = 3;
-    public static double IMU_KD = 5;
+    public static double IMU_KP = 0.2;
+    public static double IMU_KD = 0.075;
 
     MotorEx leftFrontWheel;
     MotorEx rightFrontWheel;
@@ -23,8 +23,6 @@ public class OmnimovementBoard
     MotorEx rightBackWheel;
     private IMU imu;
 
-    //State machine
-    OmnimovementBoard.YawLockState yawLockState = OmnimovementBoard.YawLockState.IDLE;
     ElapsedTime yawLockTimer = new ElapsedTime();
 
     private double IMUAngle = 0;
@@ -32,18 +30,14 @@ public class OmnimovementBoard
 
     private boolean fieldCentric = false;
     private boolean yawLockStarted = false;
-    private boolean yawLocked = false;
+
 
     public void init(HardwareMap hwMap)
     {
-        leftFrontWheel = initMotor(hwMap, false, "flWheel",
-                0, 0, 0);
-        rightFrontWheel = initMotor(hwMap, true, "frWheel",
-                0, 0, 0);
-        leftBackWheel = initMotor(hwMap, false, "blWheel",
-                0, 0, 0);
-        rightBackWheel = initMotor(hwMap, true, "brWheel",
-                0, 0, 0);
+        leftFrontWheel = initMotor(hwMap, true, "flWheel");
+        rightFrontWheel = initMotor(hwMap, false, "frWheel");
+        leftBackWheel = initMotor(hwMap, true, "blWheel");
+        rightBackWheel = initMotor(hwMap, false, "brWheel");
 
         //Set up IMU
         imu = hwMap.get(IMU.class, "imu");
@@ -55,16 +49,13 @@ public class OmnimovementBoard
         imu.resetYaw();
     }
 
-    private MotorEx initMotor(
-            HardwareMap hwMap, boolean inverted, String name,
-            int kp, int ki, int kd
-    )
+    private MotorEx initMotor(HardwareMap hwMap, boolean inverted, String name)
     {
         MotorEx motor;
-        motor = new MotorEx(hwMap, name, Motor.GoBILDA.RPM_435);
+        motor = new MotorEx(hwMap, name, 28, 435);
         motor.setRunMode(MotorEx.RunMode.VelocityControl);
-        motor.setVeloCoefficients(kp, ki, kd);
         motor.setInverted(inverted);
+        motor.setCachingTolerance(0.075);
         return motor;
     }
 
@@ -91,16 +82,16 @@ public class OmnimovementBoard
         {
             if (!yawLockStarted)
             {
-                StartYawLock();
+                IMUAngle = GetHeading();
+                yawLockTimer.reset();
                 yawLockStarted = true;
             }
-            if (yawLocked) {PowerWheels(fedAxial, fedLateral, P+D, denominator);}
+            if (yawLockTimer.milliseconds() > 200)
+            {PowerWheels(fedAxial, fedLateral, P+D, denominator);}
             else {PowerWheels(fedAxial, fedLateral, yaw, denominator);}
-            UpdateYawLock();
         }
         else
         {
-            yawLocked = false;
             yawLockStarted = false;
             PowerWheels(fedAxial, fedLateral, yaw, denominator);
         }
@@ -110,10 +101,11 @@ public class OmnimovementBoard
 
     public void PowerWheels(double axial, double lateral, double yaw, double denominator)
     {
-        leftFrontWheel.setVelocity(((axial - lateral - yaw) / denominator));
-        leftBackWheel.setVelocity(((axial + lateral - yaw) / denominator));
-        rightFrontWheel.setVelocity(((axial + lateral + yaw) / denominator));
-        rightBackWheel.setVelocity(((axial - lateral + yaw) / denominator));
+        double maxTicksPerSecond = 28 * 7.5;
+        leftFrontWheel.setVelocity(((axial - lateral - yaw) / denominator) * maxTicksPerSecond);
+        leftBackWheel.setVelocity(((axial + lateral - yaw) / denominator) * maxTicksPerSecond);
+        rightFrontWheel.setVelocity(((axial + lateral + yaw) / denominator) * maxTicksPerSecond);
+        rightBackWheel.setVelocity(((axial - lateral + yaw) / denominator) * maxTicksPerSecond);
     }
 
     public void SwitchDriveMode() {fieldCentric = !fieldCentric; IMUAngle = GetHeading();}
@@ -122,35 +114,5 @@ public class OmnimovementBoard
     {return imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);}
 
     public void ResetIMU() {imu.resetYaw(); IMUAngle = 0;}
-    
-
-    enum YawLockState {
-        IDLE,
-        LOCK_YAW
-    }
-
-    public void StartYawLock()
-    {
-        yawLockState = YawLockState.LOCK_YAW;
-        yawLockTimer.reset();
-    }
-
-    public void UpdateYawLock()
-    {
-        switch (yawLockState) {
-            case LOCK_YAW:
-                if (yawLockTimer.milliseconds() > 200) {
-                    IMUAngle = GetHeading();
-                    yawLocked = true;
-                    yawLockTimer.reset();
-                    yawLockState = YawLockState.IDLE;
-                }
-                break;
-
-            case IDLE:
-            default:
-                break;
-        }
-    }
 
 }

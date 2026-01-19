@@ -15,8 +15,8 @@ public class ServoIndividualTest extends OpMode
     @Override
     public void init()
     {
-        servo = hardwareMap.get(Servo.class, "transfer");
-        crServo = hardwareMap.get(CRServo.class, "indexer");
+        servo = hardwareMap.get(Servo.class, "stopper");
+        //crServo = hardwareMap.get(CRServo.class, "indexer");
     }
 
     @Override
@@ -33,9 +33,9 @@ public class ServoIndividualTest extends OpMode
         if (gamepad1.dpad_up) servo.setPosition(0.9);
         if (gamepad1.dpad_left) servo.setPosition(1);
 
-        if (gamepad1.left_trigger > 0.5) {crServo.setPower(0.3);}
+        /*if (gamepad1.left_trigger > 0.5) {crServo.setPower(0.3);}
         else if (gamepad1.right_trigger > 0.5) {crServo.setPower(-0.3);}
-        else {crServo.setPower(0);}
+        else {crServo.setPower(0);}*/
     }
 }
 

@@ -1,236 +1,190 @@
 package org.firstinspires.ftc.teamcode.Mechanisms;
 
-import com.qualcomm.robotcore.hardware.AnalogInput;
-import com.qualcomm.robotcore.hardware.CRServo;
-import com.qualcomm.robotcore.hardware.ColorSensor;
+import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
+import com.seattlesolvers.solverslib.hardware.motors.Motor;
+import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
+import com.seattlesolvers.solverslib.hardware.servos.ServoEx;
 
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.teamcode.OpModes.Global;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-public class LaunchBoard {
-    private final double FLYWHEEL_KP = 0;
-    private final double FLYWHEEL_KI = 0;
-    private final double FLYWHEEL_KD = 0;
+import java.util.List;
+
+@Configurable
+public class LaunchBoard
+{
+    private final double GOAL_HEIGHT = 38.19; //in
+    private final double FLYWHEEL_RADIUS = 1.89; //in
+
+    CameraBoard CamBoard = new CameraBoard();
 
     private DcMotor intake;
-    private DcMotor flywheel;
-    private Servo transfer;
+    private MotorEx leftFlywheel;
+    private MotorEx rightFlywheel;
+    private MotorEx turret;
 
-    public ColorSensor ballColor;
+    private Servo stopper;
+    private Servo angleAdjuster;
+
     public DistanceSensor ballDistance;
 
-    public boolean isShooting = true; //Start with intake
-    private boolean littleOuttakeActive = false;
+    private LaunchState launchState = LaunchState.IDLE;
 
-   public IntakeState intakeState = IntakeState.IDLE;
-    ElapsedTime intakeTimer = new ElapsedTime();
-
-    ShootingState shootingState = ShootingState.IDLE;
-    ElapsedTime transferTimer = new ElapsedTime();
-
-    ElapsedTime flywheelTime = new ElapsedTime();
-    private double prevFlywheelSnapshot = 0;
-    private double oldFlywheelError = 0;
-    private double currentSnapshotRps;
-    private double lastSnapshotRps = 0;
-    private double flywheelI = 0;
-
-    private double ballAmount = 0;
+    private double launchAngle = 0;
+    private double flywheelPower = 0;
+    private double ballsShot = 0;
+    private double lastFlywheelSpeed = 0;
+    private double adjusterAngle = 0.35;
 
 
-    public void init(HardwareMap hwMap) {
-        Global.indexerSlots = new double[]{0, 0, 0};
-        Global.currentPatternSlot = 0;
+    public void init(HardwareMap hwMap)
+    {
+        CamBoard.init(hwMap);
+
         //Initializes motors and servos
         intake = hwMap.get(DcMotor.class, "intake");
-        flywheel = hwMap.get(DcMotor.class, "flywheel");
-        transfer = hwMap.get(Servo.class, "transfer");
+        leftFlywheel = initMotor(hwMap, false, "leftFlywheel",
+                0, 0, 0);
+        rightFlywheel = initMotor(hwMap, true, "rightFlywheel",
+                0, 0, 0);
 
-        //ballColor = hwMap.get(ColorSensor.class, "ballColor");
-        //ballDistance = hwMap.get(DistanceSensor.class, "ballDistance");
-        //Default run mode
-        flywheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        intake.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        turret = new MotorEx(hwMap, "turret", Motor.GoBILDA.RPM_435);
+        turret.setRunMode(MotorEx.RunMode.PositionControl);
+        turret.setCachingTolerance(0.0001);
+        turret.setPositionCoefficient(0.075);
+        turret.setPositionTolerance(12);
 
-        //SwitchMode();
-        intakeTimer.startTime();
+        //stopper = new ServoEx(hwMap, "stopper", 180, AngleUnit.DEGREES);
+        //angleAdjuster = new ServoEx(hwMap, "angleAdjuster", 250, AngleUnit.DEGREES);
+        stopper = hwMap.get(Servo.class, "stopper");
+        angleAdjuster = hwMap.get(Servo.class, "angleAdjuster");
     }
 
-    /*public void SwitchMode()
+    private MotorEx initMotor(
+            HardwareMap hwMap, boolean inverted, String name,
+            double kp, double ki, double kd
+    )
     {
-        isShooting = !isShooting;
-        if (isShooting)
-        {
-            ballAmount = 3;
-            FlywheelMovement(0.8);
-            if (intakeState != IntakeState.FULL) {intakeState = IntakeState.IDLE;}
-            shootingState = ShootingState.TRANSFER_UP;
-        }
-        else
-        {
-            FlywheelMovement(0);
-            if (intakeState != IntakeState.FULL) {intakeState = IntakeState.EATING;}
-            shootingState = ShootingState.IDLE;
-        }
-    }*/
+        MotorEx motor;
+        motor = new MotorEx(hwMap, name, 28, 6000);
+        motor.setRunMode(MotorEx.RunMode.VelocityControl);
+        motor.setVeloCoefficients(kp, ki, kd);
+        motor.setInverted(inverted);
+        return motor;
+    }
+
     public void IntakeMovement(double input) {intake.setPower(input);}
-
-    public void LittleOuttake(double input) {
-            intakeTimer.reset();
-            intakeTimer.startTime();
-            littleOuttakeActive = true;
-            intake.setPower(input);
-
-    }
-
-    public void updateLittleOuttake() {
-        if (littleOuttakeActive && intakeTimer.milliseconds() >= 7) {
-            intake.setPower(0);
-            littleOuttakeActive = false;
-        }
-    }
 
     public void FlywheelMovement(double input)
     {
-
-        /*double flywheelDeltaTime = flywheelTime.seconds() - prevFlywheelSnapshot;
-        double targetRps = input * (flywheel.getMotorType().getMaxRPM() / 60);
-        currentSnapshotRps = (flywheel.getCurrentPosition() / flywheel.getMotorType().getTicksPerRev()) / flywheelDeltaTime) - lastSnapshotRps;
-        double error = targetRps - currentSnapshotRps;
-
-        double P = FLYWHEEL_KP * error;
-        double D = FLYWHEEL_KD * (error - oldFlywheelError);
-        flywheelI += FLYWHEEL_KI * error;
-
-        flywheel.setPower(P + flywheelI + D);
-        lastSnapshotRps = currentSnapshotRps;
-        oldFlywheelError = error;*/
-        flywheel.setPower(input);
+        leftFlywheel.setVelocity(input);
+        rightFlywheel.setVelocity(input);
     }
 
-    public double GetCurrentSnapshotRps() {return currentSnapshotRps;}
-
-    public double ReadHue(ColorSensor sensor)
+    public void TurretMovement(double input)
     {
-        //Normalize RGB values to range [0, 1]
-        double hue;
-        float red = sensor.red() / 550f;
-        float green = sensor.green() / 600f; //Sensor seems to have a bias towards green
-        float blue = sensor.blue() / 550f;
-
-        // Find the maximum and minimum values among RGB
-        float maxColor = Math.max(red, Math.max(green, blue));
-        float minColor = Math.min(red, Math.min(green, blue));
-        float deltaColor = maxColor - minColor;
-
-        // Calculate the hue
-        if (deltaColor == 0) {hue = 0;}
-        else if (maxColor == red) {hue = ((green - blue) / deltaColor) % 6;}
-        else if (maxColor == green) {hue = ((blue - red) / deltaColor) + 2;}
-        else {hue = ((red - green) / deltaColor) + 4;}
-
-        hue *= 60;
-        if (hue < 0) {hue += 360;}
-
-        return hue;
+        //turret.setVelocity(28 * 2.5 * input); //CPR * max rotations (gear ratio 3:1)
+        turret.setTargetPosition((int)input);
+        if (turret.atTargetPosition()) {turret.set(0);}
+        else {turret.set(0.1);}
     }
+
+    public void AngleAdjusterMovement(double input) {adjusterAngle += input;}
+    public void UpdateAngleAdjuster() {angleAdjuster.setPosition(adjusterAngle);}
+    public double getAdjusterAngle() {return adjusterAngle;}
 
     // --- Intake state machine ---
-    enum IntakeState
+    enum LaunchState
     {
         IDLE,
         EATING,
-        FULL
+        FULL,
+        SHOOTING,
     }
 
-    public void UpdateIntake()
+    public void Intake() //Temporary until automatic detection
     {
-        switch (intakeState)
+        launchState = LaunchState.EATING;
+        adjusterAngle -= 0.75 * ballsShot;
+        ballsShot = 0;
+    }
+    public void Rev() {launchState = LaunchState.FULL;} //Temporary until automatic detection
+    public void Shoot() {launchState = LaunchState.SHOOTING;}
+    public void Idle() {launchState = LaunchState.IDLE;}
+
+    public double getAprilTagDistance(int id) {return CamBoard.GetAprilTag(id);}
+    public double getFlywheelPower() {return flywheelPower;}
+    public double getLaunchAngle() {return launchAngle;}
+
+    public double getFlywheelVelocity() {return rightFlywheel.getVelocity();}
+
+    public void UpdateLaunch(boolean camAdjustment, double flywheelMultiplier)
+    {
+        switch (launchState)
         {
             case EATING:
 
-                //intake.setPower(-0.6);
+                intake.setPower(0.8);
+                FlywheelMovement(28 * 15); //Low-power mode
+                stopper.setPosition(0.75);
 
                 /*double distance = ballDistance.getDistance(DistanceUnit.CM);
-                double hue = ReadHue(ballColor);
 
                 if (distance < 5)
                 {
-                    //distance = 5 => closest to color sensor => highest hues
-                    if (hue >= 125 + (distance / 3) && hue <= 145 + (distance / 3))
-                    {Global.indexerSlots[Global.currentSlot] = 2;} //gren
-                    else {Global.indexerSlots[Global.currentSlot] = 1;} //puple
+
                 }*/
 
                 break;
 
-            //case FULL:
-            case IDLE:
-            default:
+            case FULL:
 
-                //intake.setPower(0);
-                break;
-        }
-    }
+                intake.setPower(0.05);
 
-    // --- Shooting state machine ---
-    enum ShootingState
-    {
-        IDLE,
-        TRANSFER_UP,
-        TRANSFER_DOWN
-    }
-
-    public void StartShooting()
-    {
-        //ballAmount = 3;
-        shootingState = ShootingState.TRANSFER_UP;
-    }
-
-    public void StopShooting() {shootingState = ShootingState.IDLE;}
-
-
-    public void UpdateShooting()
-    {
-        switch (shootingState)
-        {
-            case TRANSFER_UP:
-
-                if (transferTimer.milliseconds() <= 500) {break;}
-
-                //if (ballDistance.getDistance(DistanceUnit.CM) < 5)
+                if (camAdjustment)
                 {
-                    transfer.setPosition(0.025);
-                    transferTimer.reset();
-                    shootingState = ShootingState.TRANSFER_DOWN;
+                    double distance = CamBoard.GetAprilTag(24);
+
+                    if (distance != -1)
+                    {
+                        double hypotenuse = Math.sqrt(distance * distance + GOAL_HEIGHT * GOAL_HEIGHT);
+                        launchAngle = Math.atan((GOAL_HEIGHT + hypotenuse) / distance);
+                        flywheelPower = Math.sqrt(9.81 * (GOAL_HEIGHT + hypotenuse));
+                    }
+                    // 0.0873 rad = 5 deg, 0.611 rad = 35 deg
+                    double adjusterAngle = 0.8 - Range.scale(launchAngle, 0.0873, 0.611, 0, 0.8);
+                    angleAdjuster.setPosition(adjusterAngle * 10); // gear ratio 1/10
+                    FlywheelMovement(28 * flywheelPower / (2 * 3.1415 * FLYWHEEL_RADIUS)); //Divide by that to get RPS
                 }
+                else {FlywheelMovement(flywheelMultiplier * 28 * 100);}
+
                 break;
 
-            case TRANSFER_DOWN:
+            case SHOOTING:
 
-                if (transferTimer.milliseconds() <= 350) {break;}
-
-                transfer.setPosition(0.25);
-                transferTimer.reset();
-
-                /*if (ballAmount > 0)
+                if (rightFlywheel.getVelocity() + 25 < lastFlywheelSpeed && ballsShot < 3)
                 {
-                    ballAmount--;
-                    shootingState = ShootingState.TRANSFER_UP;
+                    angleAdjuster.setPosition(adjusterAngle + 0.075);
+                    adjusterAngle += 0.075;
+                    ballsShot++;
                 }
-                else*/
-                {shootingState = ShootingState.IDLE;}
+                intake.setPower(0.9);
+                stopper.setPosition(0.45);
+
+                lastFlywheelSpeed = rightFlywheel.getVelocity();
+
                 break;
 
             case IDLE:
             default:
 
+                intake.setPower(0);
+                FlywheelMovement(0);
                 break;
         }
     }

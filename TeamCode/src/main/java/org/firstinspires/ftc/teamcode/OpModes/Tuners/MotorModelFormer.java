@@ -39,6 +39,7 @@ public class MotorModelFormer extends OpMode
     ElapsedTime now = new ElapsedTime();
 
     MotorEx motor;
+    MotorEx helperMotor;
 
     private long lastLogTime;
     private long input = 0;
@@ -61,10 +62,15 @@ public class MotorModelFormer extends OpMode
         {RobotLog.e("Failed to open log file: " + e.getMessage());}
 
         //Motor setup
-        motor = new MotorEx(hardwareMap, "flywheel", 28, 6000);
+        motor = new MotorEx(hardwareMap, "leftFlywheel", 28, 6000);
         motor.setRunMode(MotorEx.RunMode.VelocityControl);
         motor.setVeloCoefficients(0, 0, 0); //No PID because that's what we're trying to generate
         motor.setInverted(false);
+
+        helperMotor = new MotorEx(hardwareMap, "rightFlywheel", 28, 6000);
+        helperMotor.setRunMode(MotorEx.RunMode.VelocityControl);
+        helperMotor.setVeloCoefficients(0, 0, 0); //No PID because that's what we're trying to generate
+        helperMotor.setInverted(true);
 
         now.reset();
     }
@@ -74,18 +80,19 @@ public class MotorModelFormer extends OpMode
     {
         if (now.milliseconds() - inputTimeCheck >= inputTime)
         {
-            input = rand.nextInt(28 * 75); //Degrees in a revolution * motor practical max revolutions per second
+            input = rand.nextInt(28 * 85); //Degrees in a revolution * motor practical max revolutions per second
             inputTime = 50 + rand.nextInt(1200); //milliseconds (min. 50, max. 1250)
             inputTimeCheck = (long) now.milliseconds();
 
             motor.setVelocity(input);
+            helperMotor.setVelocity(input);
         }
 
         if (writer != null && now.milliseconds() - lastLogTime >= 50) //20 Hz
         {
             try {
                 writer.write(
-                    now + "," +
+                    now.seconds() + "," +
                     input + "," +
                     motor.getVelocity() + "\n"
                 );

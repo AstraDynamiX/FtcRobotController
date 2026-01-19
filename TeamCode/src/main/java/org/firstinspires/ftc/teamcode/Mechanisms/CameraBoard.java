@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Mechanisms;
 
+import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -18,25 +19,49 @@ public class CameraBoard
 
     public void init(HardwareMap hwMap)
     {
-        //WebcamName webcamName = hwMap.get(WebcamName.class, "Webcam1");
+        WebcamName webcamName = hwMap.get(WebcamName.class, "Webcam1");
         aprilTagProcessor = AprilTagProcessor.easyCreateWithDefaults();
-        //visionPortal = VisionPortal.easyCreateWithDefaults(webcamName, aprilTagProcessor);
+        visionPortal = VisionPortal.easyCreateWithDefaults(webcamName, aprilTagProcessor);
     }
 
-    public List<Double> GetAprilTag()
+    public double GetAprilTag(int id)
     {
         List<AprilTagDetection> currentDetections = aprilTagProcessor.getDetections();
-        List<Double> info = new ArrayList<>();
+        double distance = -1;
 
         for (AprilTagDetection detection : currentDetections)
         {
+            if (detection.id != id) {continue;}
             if (detection.ftcPose != null)
-            {info.add(detection.ftcPose.range);}
+            {distance = detection.ftcPose.range;}
         }
-        return info;
+        return distance;
     }
 
+    public double ReadHue(ColorSensor sensor)
+    {
+        //Normalize RGB values to range [0, 1]
+        double hue;
+        float red = sensor.red() / 550f;
+        float green = sensor.green() / 600f; //Sensor seems to have a bias towards green
+        float blue = sensor.blue() / 550f;
 
+        // Find the maximum and minimum values among RGB
+        float maxColor = Math.max(red, Math.max(green, blue));
+        float minColor = Math.min(red, Math.min(green, blue));
+        float deltaColor = maxColor - minColor;
+
+        // Calculate the hue
+        if (deltaColor == 0) {hue = 0;}
+        else if (maxColor == red) {hue = ((green - blue) / deltaColor) % 6;}
+        else if (maxColor == green) {hue = ((blue - red) / deltaColor) + 2;}
+        else {hue = ((red - green) / deltaColor) + 4;}
+
+        hue *= 60;
+        if (hue < 0) {hue += 360;}
+
+        return hue;
+    }
 
 }
 
