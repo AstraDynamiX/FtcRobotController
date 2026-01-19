@@ -48,7 +48,15 @@ public class TeleOp extends OpMode {
     private double flywheelMultiplier = 0.8;
     private double power;
     private boolean camAdjustment = false;
+    // Auto strafe variables
+    private AutoStrafeState autoStrafeState = AutoStrafeState.IDLE;
+    private double lockedHeading = 0;
+    private ElapsedTime autoStrafeTimer = new ElapsedTime();
+    public static double AUTO_STRAFE_TIME = 1.5; // secunde
+    public static double AUTO_STRAFE_POWER = 0.6; // putere strafe
 
+    // Flag pentru gamepad2.y
+    private boolean yHeld2 = false;
     @Override
     public void init()
     {
@@ -89,12 +97,23 @@ public class TeleOp extends OpMode {
     @Override
     public void loop()
     {
-        OmniBoard.ChassisMovement(
-                gamepad1.left_stick_y * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
-                gamepad1.left_stick_x * (MOTOR_MULTIPLIER*STRAFE_MULTIPLIER) / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
-                gamepad1.right_stick_x * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
-                MOTOR_MULTIPLIER * STRAFE_MULTIPLIER
-        );
+        if (autoStrafeState == AutoStrafeState.IDLE) {
+            OmniBoard.ChassisMovement(
+                    gamepad1.left_stick_y * MOTOR_MULTIPLIER / (gamepad1.left_trigger + 1) * (gamepad1.right_trigger / 2 + 1),
+                    gamepad1.left_stick_x * (MOTOR_MULTIPLIER * STRAFE_MULTIPLIER) / (gamepad1.left_trigger + 1) * (gamepad1.right_trigger / 2 + 1),
+                    gamepad1.right_stick_x * MOTOR_MULTIPLIER / (gamepad1.left_trigger + 1) * (gamepad1.right_trigger / 2 + 1),
+                    MOTOR_MULTIPLIER * STRAFE_MULTIPLIER
+            );
+        }
+        if (gamepad2.y && !yHeld2)
+        {
+            yHeld = true;
+            StartAutoStrafe();
+        }
+        if (!gamepad2.y) {yHeld2 = false;}
+
+// Update auto strafe state machine
+        UpdateAutoStrafe();
 
         /*if (gamepad1.options && !options1Held)
         {
@@ -242,6 +261,13 @@ public class TeleOp extends OpMode {
         FULL_POWER,
         LOW_POWER
     }
+    enum AutoStrafeState
+    {
+        IDLE,
+        LOCK_HEADING,
+        STRAFE_LEFT,
+        COMPLETE
+    }
 
     public void UpdateFlywheel()
     {
@@ -276,6 +302,80 @@ public class TeleOp extends OpMode {
                 LaunchBoard.FlywheelMovement(0);
                 break;
         }
+    }
+    private void StartAutoStrafe()
+    {
+        // aici face cacat de strafe
+        lockedHeading = OmniBoard.GetHeading();
+
+        autoStrafeState = AutoStrafeState.STRAFE_LEFT;
+        autoStrafeTimer.reset();
+
+        telemetry.addData("AUTO STRAFE", "Started! Heading locked at %.1f°", Math.toDegrees(lockedHeading));
+    }
+
+    /**
+     * Update pentru auto strafe state machine
+     */
+    private void UpdateAutoStrafe()
+    {
+        switch (autoStrafeState)
+        {
+
+            case STRAFE_LEFT:
+                // Calculează eroarea de heading
+                double currentHeading = OmniBoard.GetHeading();
+                autoStrafeTimer.startTime();
+
+                // Aplică mișcarea: strafe la stânga cu heading lock
+                OmniBoard.ChassisMovement(
+                        0,                      // nu merge înainte/înapoi
+                        -AUTO_STRAFE_POWER,     // strafe la stânga
+                        0,      // corectează heading-ul
+                        MOTOR_MULTIPLIER * STRAFE_MULTIPLIER
+                );
+
+                // Verifică dacă a trecut timpul
+                if (autoStrafeTimer.seconds() >= AUTO_STRAFE_TIME)
+                {
+                    autoStrafeState = AutoStrafeState.COMPLETE;
+                    autoStrafeTimer.reset();
+                }
+                break;
+
+            case COMPLETE:
+                // Oprește motoarele
+                OmniBoard.ChassisMovement(0, 0, 0, MOTOR_MULTIPLIER);
+
+                // Așteaptă puțin înainte de clear
+                if (autoStrafeTimer.milliseconds() > 200)
+                {
+                    ClearAutoStrafe();
+                }
+                break;
+
+            case IDLE:
+            default:
+                // Control manual normal - nu face nimic
+                break;
+        }
+    }
+    private void ClearAutoStrafe()
+    {
+        autoStrafeState = AutoStrafeState.IDLE;
+        lockedHeading = 0;
+
+        telemetry.addData("AUTO STRAFE", "Complete! Manual control restored.");
+    }
+
+    /**
+     * Helper pentru angle wrapping
+     */
+    private double AngleWrap(double angle)
+    {
+        while (angle > Math.PI) angle -= 2 * Math.PI;
+        while (angle < -Math.PI) angle += 2 * Math.PI;
+        return angle;
     }
 
 }

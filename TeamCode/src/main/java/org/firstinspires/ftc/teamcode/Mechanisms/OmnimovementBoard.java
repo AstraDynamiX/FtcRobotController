@@ -36,13 +36,13 @@ public class OmnimovementBoard
 
     public void init(HardwareMap hwMap)
     {
-        leftFrontWheel = initMotor(hwMap, DcMotorSimple.Direction.FORWARD, "lfWheel",
+        leftFrontWheel = initMotor(hwMap, DcMotorSimple.Direction.FORWARD, "flWheel",
                 0, 0, 0);
-        rightFrontWheel = initMotor(hwMap, DcMotorSimple.Direction.REVERSE, "rfWheel",
+        rightFrontWheel = initMotor(hwMap, DcMotorSimple.Direction.REVERSE, "frWheel",
                 0, 0, 0);
-        leftBackWheel = initMotor(hwMap, DcMotorSimple.Direction.FORWARD, "lbWheel",
+        leftBackWheel = initMotor(hwMap, DcMotorSimple.Direction.FORWARD, "blWheel",
                 0, 0, 0);
-        rightBackWheel = initMotor(hwMap, DcMotorSimple.Direction.REVERSE, "rbWheel",
+        rightBackWheel = initMotor(hwMap, DcMotorSimple.Direction.REVERSE, "brWheel",
                 0, 0, 0);
 
         //Set up IMU
@@ -87,33 +87,46 @@ public class OmnimovementBoard
         double P = IMU_KP * error;
         double D = IMU_KD * (error - oldError);
         //Lock movement to current angle if driver isn't yawing to prevent robot from curving when strafing
-        if (yaw > -0.05 && yaw < 0.05)
+        double correction = 0;
+        if (yaw > -0.05 && yaw < 0.05 && yawLocked)
         {
+            correction = IMU_KP * error + IMU_KD * (error- oldError);
+
             if (!yawLockStarted)
             {
                 StartYawLock();
                 yawLockStarted = true;
             }
-            if (yawLocked) {PowerWheels(fedAxial, fedLateral, P+D, denominator);}
+            if (yawLocked) {PowerWheels(fedAxial, fedLateral, correction, denominator);}
             else {PowerWheels(fedAxial, fedLateral, yaw, denominator);}
             UpdateYawLock();
         }
-        else
-        {
+        else{
             yawLocked = false;
             yawLockStarted = false;
             PowerWheels(fedAxial, fedLateral, yaw, denominator);
         }
         oldError = error;
-        PowerWheels(axial, lateral, yaw, denominator);
+
     }
 
+    public static  double MAX_VELOCITY = 2000;
     public void PowerWheels(double axial, double lateral, double yaw, double denominator)
     {
         leftFrontWheel.setVelocity(((axial - lateral - yaw) / denominator));
         leftBackWheel.setVelocity(((axial + lateral - yaw) / denominator));
         rightFrontWheel.setVelocity(((axial + lateral + yaw) / denominator));
         rightBackWheel.setVelocity(((axial - lateral + yaw) / denominator));
+
+        double lf = (axial - lateral - yaw) / denominator;
+        double lb = (axial + lateral - yaw) / denominator;
+        double rf = (axial + lateral + yaw) / denominator;
+        double rb = (axial - lateral + yaw) / denominator;
+
+        leftFrontWheel.setVelocity(lf * MAX_VELOCITY);
+        rightFrontWheel.setVelocity(rf * MAX_VELOCITY);
+        leftBackWheel.setVelocity(lb * MAX_VELOCITY);
+        rightBackWheel.setVelocity(rb * MAX_VELOCITY);
     }
 
     public void SwitchDriveMode() {fieldCentric = !fieldCentric; IMUAngle = GetHeading();}
