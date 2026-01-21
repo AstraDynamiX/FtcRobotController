@@ -30,8 +30,7 @@ import java.util.Random;
  * of our motor, which is then used to generate PID coefficients mathematically
  */
 
-@Configurable
-@TeleOp
+@TeleOp(group = "modelFormers")
 public class MotorModelFormer extends OpMode
 {
     private FileWriter writer;
@@ -55,7 +54,7 @@ public class MotorModelFormer extends OpMode
         File file = new File("/sdcard/FIRST/motorData.csv");
 
         try {
-            writer = new FileWriter(file, false); // overwrite each run
+            writer = new FileWriter(file, false); //Overwrite each run
             writer.flush();
         }
         catch (IOException e)

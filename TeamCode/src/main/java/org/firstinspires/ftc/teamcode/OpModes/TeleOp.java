@@ -36,6 +36,7 @@ public class TeleOp extends OpMode {
 
     private int launchState = 0;
     private double flywheelMultiplier = 0.65;
+    private boolean cameraInitialized = false;
     private boolean camAdjustment = false;
 
     @Override
@@ -68,8 +69,14 @@ public class TeleOp extends OpMode {
         //Toggle cam adjustment
         if (gamepad1.options && !options1Held)
         {
-            camAdjustment = !camAdjustment;
             options1Held = true;
+            camAdjustment = !camAdjustment;
+
+            if (!cameraInitialized)
+            {
+                LaunchBoard.initCamera(hardwareMap);
+                cameraInitialized = true;
+            }
         }
         if (!gamepad1.options) {options1Held = false;}
 
@@ -133,8 +140,10 @@ public class TeleOp extends OpMode {
         }
         if (!gamepad1.dpad_left) {leftHeld = false;}
 
+        //Functions that get called every loop with no conditions
         LaunchBoard.UpdateLaunch(camAdjustment, flywheelMultiplier);
-        LaunchBoard.TurretMovement(0);
+        if (camAdjustment) {LaunchBoard.TurretMovement();}
+        else {LaunchBoard.TurretLockPosition(0);}
         LaunchBoard.UpdateAngleAdjuster();
 
         // ------ Telemetry ------
@@ -142,16 +151,19 @@ public class TeleOp extends OpMode {
         if (camAdjustment)
         {
             telemetry.addData("APRIL TAG DISTANCE", LaunchBoard.getAprilTagDistance(24));
+            telemetry.addData("APRIL TAG BEARING", LaunchBoard.getAprilTagBearing(24));
             telemetry.addData("FLYWHEEL POWER", LaunchBoard.getFlywheelPower());
             telemetry.addData("LAUNCH ANGLE", LaunchBoard.getLaunchAngle());
+
+            telemetry.addData("TURRET INPUT", LaunchBoard.getTurretInput());
+            telemetry.addData("TURRET POSITION", LaunchBoard.getTurretPosition());
+
         }
         else
         {
             telemetry.addData("FLYWHEEL MULTIPLIER", flywheelMultiplier);
             telemetry.addData("LAUNCH ANGLE", LaunchBoard.getAdjusterAngle());
         }
-        telemetry.addData("FLYWHEEL VELOCITY", LaunchBoard.getFlywheelVelocity());
-
         //telemetry.addData("IMU:", OmniBoard.GetHeading() / 3.1415 + "π");
     }
 

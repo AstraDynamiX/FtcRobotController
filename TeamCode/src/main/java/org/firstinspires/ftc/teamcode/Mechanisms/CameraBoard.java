@@ -24,7 +24,7 @@ public class CameraBoard
         visionPortal = VisionPortal.easyCreateWithDefaults(webcamName, aprilTagProcessor);
     }
 
-    public double GetAprilTag(int id)
+    public double GetAprilTag(int id, String dimension)
     {
         List<AprilTagDetection> currentDetections = aprilTagProcessor.getDetections();
         double distance = -1;
@@ -33,9 +33,35 @@ public class CameraBoard
         {
             if (detection.id != id) {continue;}
             if (detection.ftcPose != null)
-            {distance = detection.ftcPose.range;}
+            {
+                switch (dimension)
+                {
+                    case "range": distance = detection.ftcPose.range; break;
+                    case "bearing": distance = detection.ftcPose.bearing; break;
+                    case "yaw": distance = detection.ftcPose.yaw; break;
+                }
+            }
         }
         return distance;
+    }
+
+    //Returns all dimensions in a list
+    public double[] GetAprilTag(int id)
+    {
+        List<AprilTagDetection> currentDetections = aprilTagProcessor.getDetections();
+        double[] info = {0, 0, 0};
+
+        for (AprilTagDetection detection : currentDetections)
+        {
+            if (detection.id != id) {continue;}
+            if (detection.ftcPose != null)
+            {
+                info[0] = detection.ftcPose.range;
+                info[1] = detection.ftcPose.bearing;
+                info[2] = detection.ftcPose.yaw;
+            }
+        }
+        return info;
     }
 
     public double ReadHue(ColorSensor sensor)
