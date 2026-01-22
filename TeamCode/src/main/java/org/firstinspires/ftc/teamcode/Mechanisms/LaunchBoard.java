@@ -160,7 +160,7 @@ public class LaunchBoard
 
                 intake.setPower(0.8);
                 FlywheelMovement(TICKS_PER_REV * 15); //Low-power mode
-                stopper.setPosition(0.75);
+                stopper.setPosition(0.9);
 
                 /*double distance = ballDistance.getDistance(DistanceUnit.CM);
 
