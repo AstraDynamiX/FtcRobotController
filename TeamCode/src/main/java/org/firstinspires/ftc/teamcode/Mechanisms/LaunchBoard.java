@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.Mechanisms;
 
+import static java.lang.Math.atan;
+
 import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
@@ -20,8 +22,10 @@ public class LaunchBoard
 {
     private final double GOAL_HEIGHT = 38.19; //in
     private final double FLYWHEEL_RADIUS = 1.89; //in
+    private final double TICKS_PER_REV = 28; //Every GoBilda 5202 series motor has 28 TPR
 
     CameraBoard CamBoard = new CameraBoard();
+    ElapsedTime stopperTimer = new ElapsedTime();
 
     private DcMotor intake;
     private MotorEx leftFlywheel;
@@ -44,20 +48,18 @@ public class LaunchBoard
 
     public void init(HardwareMap hwMap)
     {
-        CamBoard.init(hwMap);
-
-        //Initializes motors and servos
+        //Initialize motors and servos
         intake = hwMap.get(DcMotor.class, "intake");
         leftFlywheel = initMotor(hwMap, false, "leftFlywheel",
-                0, 0, 0);
+                3.25, 4.5, 0);
         rightFlywheel = initMotor(hwMap, true, "rightFlywheel",
-                0, 0, 0);
+                3.25, 4.5, 0);
 
         turret = new MotorEx(hwMap, "turret", Motor.GoBILDA.RPM_435);
         turret.setRunMode(MotorEx.RunMode.PositionControl);
         turret.setCachingTolerance(0.0001);
-        turret.setPositionCoefficient(0.075);
-        turret.setPositionTolerance(12);
+        turret.setPositionCoefficient(0.09);
+        turret.setPositionTolerance(2);
 
         //stopper = new ServoEx(hwMap, "stopper", 180, AngleUnit.DEGREES);
         //angleAdjuster = new ServoEx(hwMap, "angleAdjuster", 250, AngleUnit.DEGREES);
@@ -71,12 +73,14 @@ public class LaunchBoard
     )
     {
         MotorEx motor;
-        motor = new MotorEx(hwMap, name, 28, 6000);
+        motor = new MotorEx(hwMap, name, TICKS_PER_REV, 6000);
         motor.setRunMode(MotorEx.RunMode.VelocityControl);
         motor.setVeloCoefficients(kp, ki, kd);
         motor.setInverted(inverted);
         return motor;
     }
+
+    public void initCamera(HardwareMap hwMap) {CamBoard.init(hwMap);}
 
     public void IntakeMovement(double input) {intake.setPower(input);}
 
@@ -86,11 +90,22 @@ public class LaunchBoard
         rightFlywheel.setVelocity(input);
     }
 
-    public void TurretMovement(double input)
+    public void TurretLockPosition(double input)
     {
-        //turret.setVelocity(28 * 2.5 * input); //CPR * max rotations (gear ratio 3:1)
         turret.setTargetPosition((int)input);
-        if (turret.atTargetPosition()) {turret.set(0);}
+        if (turret.atTargetPosition()) {turret.set(0.035);}
+        else {turret.set(0.1);}
+    }
+
+    public void TurretMovement()
+    {
+        double[] aprilTagDimensions = CamBoard.GetAprilTag(24);
+        double aprilTagDistance = aprilTagDimensions[0];
+        double aprilTagBearing = aprilTagDimensions[1];
+
+        if (aprilTagDistance == 0 || aprilTagBearing == 0) {return;}
+        turret.setTargetPosition((int)(TICKS_PER_REV * atan(aprilTagDistance/aprilTagBearing) / 360 * 10)); //gear ratio 10/1
+        if (turret.atTargetPosition()) {turret.set(0.05);}
         else {turret.set(0.1);}
     }
 
@@ -114,14 +129,28 @@ public class LaunchBoard
         ballsShot = 0;
     }
     public void Rev() {launchState = LaunchState.FULL;} //Temporary until automatic detection
-    public void Shoot() {launchState = LaunchState.SHOOTING;}
+    public void Shoot()
+    {
+        launchState = LaunchState.SHOOTING;
+        stopperTimer.reset();
+    }
     public void Idle() {launchState = LaunchState.IDLE;}
 
-    public double getAprilTagDistance(int id) {return CamBoard.GetAprilTag(id);}
+    public double getAprilTagDistance(int id) {return CamBoard.GetAprilTag(id, "range");}
+    public double getAprilTagBearing(int id) {return CamBoard.GetAprilTag(id, "bearing");}
     public double getFlywheelPower() {return flywheelPower;}
     public double getLaunchAngle() {return launchAngle;}
 
-    public double getFlywheelVelocity() {return rightFlywheel.getVelocity();}
+    public double getTurretPosition() {return turret.getCurrentPosition();}
+    public double getTurretInput()
+    {
+        double[] aprilTagDimensions = CamBoard.GetAprilTag(24);
+        double aprilTagDistance = aprilTagDimensions[0];
+        double aprilTagBearing = aprilTagDimensions[1];
+
+        if (aprilTagDistance == 0 || aprilTagBearing == 0) {return 0;}
+        return (TICKS_PER_REV * atan(aprilTagDistance/aprilTagBearing) / 360 * 10); //gear ratio 10/1
+    }
 
     public void UpdateLaunch(boolean camAdjustment, double flywheelMultiplier)
     {
@@ -130,7 +159,7 @@ public class LaunchBoard
             case EATING:
 
                 intake.setPower(0.8);
-                FlywheelMovement(28 * 15); //Low-power mode
+                FlywheelMovement(TICKS_PER_REV * 15); //Low-power mode
                 stopper.setPosition(0.75);
 
                 /*double distance = ballDistance.getDistance(DistanceUnit.CM);
@@ -148,24 +177,27 @@ public class LaunchBoard
 
                 if (camAdjustment)
                 {
-                    double distance = CamBoard.GetAprilTag(24);
+                    double distance = CamBoard.GetAprilTag(24, "range");
 
                     if (distance != -1)
                     {
                         double hypotenuse = Math.sqrt(distance * distance + GOAL_HEIGHT * GOAL_HEIGHT);
-                        launchAngle = Math.atan((GOAL_HEIGHT + hypotenuse) / distance);
-                        flywheelPower = Math.sqrt(9.81 * (GOAL_HEIGHT + hypotenuse));
+                        launchAngle = atan((GOAL_HEIGHT + hypotenuse) / distance);
+                        flywheelPower = Math.sqrt(386.09 * (GOAL_HEIGHT + hypotenuse)); //gravitational acceleration in in/s^2
                     }
                     // 0.0873 rad = 5 deg, 0.611 rad = 35 deg
-                    double adjusterAngle = 0.8 - Range.scale(launchAngle, 0.0873, 0.611, 0, 0.8);
-                    angleAdjuster.setPosition(adjusterAngle * 10); // gear ratio 1/10
-                    FlywheelMovement(28 * flywheelPower / (2 * 3.1415 * FLYWHEEL_RADIUS)); //Divide by that to get RPS
+                    double adjusterAngle = 0.9 - Range.scale(launchAngle, 0.0873, 0.611, 0.1, 0.9);
+                    angleAdjuster.setPosition(adjusterAngle);
+                    FlywheelMovement(TICKS_PER_REV * flywheelPower / (2 * 3.1415 * FLYWHEEL_RADIUS)); //Divide by that to get RPS
                 }
-                else {FlywheelMovement(flywheelMultiplier * 28 * 100);}
+                else {FlywheelMovement(flywheelMultiplier * TICKS_PER_REV * 100);}
 
                 break;
 
             case SHOOTING:
+
+                stopper.setPosition(0.45);
+                if (stopperTimer.milliseconds() < 150) {return;}
 
                 if (rightFlywheel.getVelocity() + 25 < lastFlywheelSpeed && ballsShot < 3)
                 {
@@ -174,7 +206,6 @@ public class LaunchBoard
                     ballsShot++;
                 }
                 intake.setPower(0.9);
-                stopper.setPosition(0.45);
 
                 lastFlywheelSpeed = rightFlywheel.getVelocity();
 

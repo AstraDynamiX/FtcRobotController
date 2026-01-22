@@ -14,8 +14,8 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 @Configurable
 public class OmnimovementBoard
 {
-    public static double IMU_KP = 0.2;
-    public static double IMU_KD = 0.075;
+    public static double IMU_KP = 0.1;
+    public static double IMU_KD = 0;
 
     MotorEx leftFrontWheel;
     MotorEx rightFrontWheel;
@@ -101,7 +101,7 @@ public class OmnimovementBoard
 
     public void PowerWheels(double axial, double lateral, double yaw, double denominator)
     {
-        double maxTicksPerSecond = 28 * 7.5;
+        double maxTicksPerSecond = 28 * 7;
         leftFrontWheel.setVelocity(((axial - lateral - yaw) / denominator) * maxTicksPerSecond);
         leftBackWheel.setVelocity(((axial + lateral - yaw) / denominator) * maxTicksPerSecond);
         rightFrontWheel.setVelocity(((axial + lateral + yaw) / denominator) * maxTicksPerSecond);

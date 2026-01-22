@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.OpModes.Tests;
 
+import android.util.Size;
+
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -15,18 +17,18 @@ import java.util.List;
 @TeleOp(group = "tests")
 public class CameraAprilTagRecognition extends OpMode
 {
-    CameraBoard CamBoard = new CameraBoard();
-
     private AprilTagProcessor aprilTagProcessor;
     private VisionPortal visionPortal;
 
     @Override
     public void init()
     {
-        CamBoard.init(hardwareMap);
         WebcamName webcamName = hardwareMap.get(WebcamName.class, "Webcam1");
         aprilTagProcessor = AprilTagProcessor.easyCreateWithDefaults();
         visionPortal = VisionPortal.easyCreateWithDefaults(webcamName, aprilTagProcessor);
+
+        VisionPortal.Builder builder = new VisionPortal.Builder();
+        builder.setCameraResolution(new Size(100, 100));
     }
 
     @Override
@@ -35,17 +37,18 @@ public class CameraAprilTagRecognition extends OpMode
         List<AprilTagDetection> currentDetections = aprilTagProcessor.getDetections();
         StringBuilder idsFound = new StringBuilder();
         double distance = 0;
+        double bearing = 0;
 
         for (AprilTagDetection detection : currentDetections)
         {
             distance = detection.ftcPose.range;
+            bearing = detection.ftcPose.bearing;
             idsFound.append(detection.id);
             idsFound.append(' ');
         }
         telemetry.addData("April Tags", idsFound);
         telemetry.addData("Distance", distance);
-        if (CamBoard.GetAprilTag(24) != -1)
-        {telemetry.addData("APRIL TAG DISTANCE", CamBoard.GetAprilTag(24));}
+        telemetry.addData("Bearing", bearing);
     }
 
     @Override
