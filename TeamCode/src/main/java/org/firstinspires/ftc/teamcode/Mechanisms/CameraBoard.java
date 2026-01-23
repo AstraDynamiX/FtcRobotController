@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.Mechanisms;
 
+import android.util.Size;
+
 import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
@@ -19,15 +21,19 @@ public class CameraBoard
 
     public void init(HardwareMap hwMap)
     {
-        WebcamName webcamName = hwMap.get(WebcamName.class, "Webcam1");
         aprilTagProcessor = AprilTagProcessor.easyCreateWithDefaults();
-        visionPortal = VisionPortal.easyCreateWithDefaults(webcamName, aprilTagProcessor);
+
+        VisionPortal.Builder builder = new VisionPortal.Builder();
+        builder.setCamera(hwMap.get(WebcamName.class, "Webcam 1"));
+        builder.setCameraResolution(new Size(640, 480));
+        builder.addProcessor(aprilTagProcessor);
+        visionPortal = builder.build();
     }
 
     public double GetAprilTag(int id, String dimension)
     {
         List<AprilTagDetection> currentDetections = aprilTagProcessor.getDetections();
-        double distance = -1;
+        double distance = 400; //Impossible value to tell if data has actually been found
 
         for (AprilTagDetection detection : currentDetections)
         {
@@ -49,7 +55,7 @@ public class CameraBoard
     public double[] GetAprilTag(int id)
     {
         List<AprilTagDetection> currentDetections = aprilTagProcessor.getDetections();
-        double[] info = {0, 0, 0};
+        double[] info = {400, 400, 400}; //Impossible values for each to tell if data has actually been found
 
         for (AprilTagDetection detection : currentDetections)
         {

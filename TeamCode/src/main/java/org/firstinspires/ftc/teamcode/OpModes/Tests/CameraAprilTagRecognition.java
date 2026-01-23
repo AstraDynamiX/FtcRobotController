@@ -23,12 +23,13 @@ public class CameraAprilTagRecognition extends OpMode
     @Override
     public void init()
     {
-        WebcamName webcamName = hardwareMap.get(WebcamName.class, "Webcam1");
         aprilTagProcessor = AprilTagProcessor.easyCreateWithDefaults();
-        visionPortal = VisionPortal.easyCreateWithDefaults(webcamName, aprilTagProcessor);
 
         VisionPortal.Builder builder = new VisionPortal.Builder();
-        builder.setCameraResolution(new Size(100, 100));
+        builder.setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"));
+        builder.setCameraResolution(new Size(640, 480));
+        builder.addProcessor(aprilTagProcessor);
+        visionPortal = builder.build();
     }
 
     @Override

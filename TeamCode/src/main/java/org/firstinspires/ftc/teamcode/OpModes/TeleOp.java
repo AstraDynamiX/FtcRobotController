@@ -1,12 +1,10 @@
 package org.firstinspires.ftc.teamcode.OpModes;
 
-import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.Mechanisms.CameraBoard;
 import org.firstinspires.ftc.teamcode.Mechanisms.LaunchBoard;
 import org.firstinspires.ftc.teamcode.Mechanisms.OmnimovementBoard;
-import java.util.List;
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "TeleOp_DECODE")
 public class TeleOp extends OpMode {
@@ -143,7 +141,7 @@ public class TeleOp extends OpMode {
         //Functions that get called every loop with no conditions
         LaunchBoard.UpdateLaunch(camAdjustment, flywheelMultiplier);
         if (camAdjustment) {LaunchBoard.TurretMovement();}
-        else {LaunchBoard.TurretLockPosition(0);}
+        else {LaunchBoard.TurretCounterYaw();}
         LaunchBoard.UpdateAngleAdjuster();
 
         // ------ Telemetry ------
@@ -154,10 +152,9 @@ public class TeleOp extends OpMode {
             telemetry.addData("APRIL TAG BEARING", LaunchBoard.getAprilTagBearing(24));
             telemetry.addData("FLYWHEEL POWER", LaunchBoard.getFlywheelPower());
             telemetry.addData("LAUNCH ANGLE", LaunchBoard.getLaunchAngle());
-
-            telemetry.addData("TURRET INPUT", LaunchBoard.getTurretInput());
+            telemetry.addData("", "");
+            telemetry.addData("BEARING TICKS", LaunchBoard.getBearingTicks());
             telemetry.addData("TURRET POSITION", LaunchBoard.getTurretPosition());
-
         }
         else
         {

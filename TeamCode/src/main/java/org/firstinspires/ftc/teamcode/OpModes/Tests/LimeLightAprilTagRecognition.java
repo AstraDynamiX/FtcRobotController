@@ -1,24 +1,20 @@
 package org.firstinspires.ftc.teamcode.OpModes.Tests;
 
 import com.qualcomm.hardware.limelightvision.Limelight3A;
-import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.Range;
 
-@Autonomous
-public class LimeLightAprilTag extends OpMode {
+@TeleOp
+public class LimeLightAprilTagRecognition extends OpMode
+{
     private Limelight3A limelight;
     DcMotor turret;
 
-    // CAMERA OFFSET - tx când e centrat pe goal
-    private static final double CAMERA_OFFSET_TX = 0;
-
-    // Control simplu și rapid
-    private final double kP = 0.055;              // Proportional gain
-    private final double maxPower = 0.5;          // Max power pentru viteză
-    private final double deadzone = 1.0;          // ±1° toleranță
+    private final double kP = 0.055;
+    private final double maxPower = 0.5;
+    private final double deadzone = 1.0; //±1° toleranță
 
     // Limite turretă
     private static final double DEGREES_PER_TICK = 360.0 / (537.7);
@@ -39,7 +35,6 @@ public class LimeLightAprilTag extends OpMode {
         limelight.pipelineSwitch(7);
 
         telemetry.addLine("Continuous Tracking Ready");
-        telemetry.addData("Camera offset", CAMERA_OFFSET_TX);
         telemetry.update();
     }
 
@@ -58,7 +53,7 @@ public class LimeLightAprilTag extends OpMode {
         }
 
         double rawTx = limelight.getLatestResult().getTx();
-        double error = rawTx - CAMERA_OFFSET_TX;
+        double error = rawTx;
         double currentPosDegrees = turret.getCurrentPosition() * DEGREES_PER_TICK;
 
         telemetry.addData("Raw tx", "%.2f", rawTx);

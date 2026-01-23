@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.samples;
+package org.firstinspires.ftc.teamcode.PedroSamples;
 
 
 import com.pedropathing.follower.Follower;
@@ -15,7 +15,7 @@ import com.seattlesolvers.solverslib.pedroCommand.TurnToCommand;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-@Autonomous
+@Autonomous(group = "zPedroSamples")
 public class PedroCommands extends CommandOpMode {
     Follower follower;
 

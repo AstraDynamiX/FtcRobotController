@@ -15,6 +15,7 @@ import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
 import org.firstinspires.ftc.teamcode.Mechanisms.GoBildaPinpointDriver;
 import org.firstinspires.ftc.teamcode.Mechanisms.OmnimovementBoard;
@@ -24,6 +25,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Locale;
 import java.util.Random;
 
 /**
@@ -41,7 +43,8 @@ import java.util.Random;
 @TeleOp(group = "modelFormers")
 public class ChassisModelFormer extends OpMode
 {
-    private final double BOUNDS = 60; //in - how much room the robot has
+    private final int TICKS_PER_REV = 28;
+    private final double BOUNDS = 37; //in - how much room the robot has
 
     MotorEx leftFrontWheel;
     MotorEx rightFrontWheel;
@@ -59,7 +62,11 @@ public class ChassisModelFormer extends OpMode
 
     private int currentAx = 0;
     private int[] axValues = new int[]{0, 0, 0};
+    private boolean pause = false;
+    private int preventAggressiveBraking = 1;
+
     private boolean aHeld = false;
+    private boolean bHeld = false;
 
 
     @Override
@@ -70,8 +77,7 @@ public class ChassisModelFormer extends OpMode
         File file = new File("/sdcard/FIRST/chassisData.csv");
 
         try {
-            //Each run gets added because space is limited and pausing and repositioning the robot may be needed
-            writer = new FileWriter(file, true);
+            writer = new FileWriter(file, false);
             writer.flush();
         }
         catch (IOException e)
@@ -93,10 +99,22 @@ public class ChassisModelFormer extends OpMode
         pinpoint.resetPosAndIMU();
     }
 
+    @Override
+    public void init_loop()
+    {
+        pinpoint.update();
+        Pose2D position = pinpoint.getPosition();
+        String data = String.format(Locale.US, "{X: %.3f, Y: %.3f, H: %.3f}",
+                position.getX(DistanceUnit.INCH),
+                position.getY(DistanceUnit.INCH),
+                position.getHeading(AngleUnit.DEGREES));
+        telemetry.addData("POSITION", data);
+    }
+
     private MotorEx initMotor(HardwareMap hwMap, boolean inverted, String name)
     {
         MotorEx motor;
-        motor = new MotorEx(hwMap, name, 28, 435);
+        motor = new MotorEx(hwMap, name, TICKS_PER_REV, 435);
         motor.setRunMode(MotorEx.RunMode.VelocityControl);
         motor.setInverted(inverted);
         motor.setCachingTolerance(0.075);
@@ -106,18 +124,69 @@ public class ChassisModelFormer extends OpMode
     @Override
     public void loop()
     {
-        double position = pinpoint.getPosX(DistanceUnit.INCH);
-        int inBounds = 0;
-        if (position < -30) {inBounds = 0;} //too far back
-        else if (position > 30) {inBounds = 2;} //too far front
+        pinpoint.update();
+        double position = 0;
+        switch (currentAx)
+        {
+            case 0: position = pinpoint.getPosX(DistanceUnit.INCH); break;
+            case 1: position = pinpoint.getPosY(DistanceUnit.INCH); break;
+        }
+        telemetry.addData("POSITION", position);
+
+        //Switch axes
+        if (gamepad1.a && !aHeld)
+        {
+            aHeld = true;
+            currentAx++;
+            if (currentAx >= 3) {currentAx = 0;}
+        }
+        if (!gamepad1.a) {aHeld = false;}
+
+        telemetry.addData("CURRENT AX", currentAx);
+
+        //Space is limited and pausing and repositioning the robot may be needed
+        if (gamepad1.b && !bHeld)
+        {
+            bHeld = true;
+            pause = !pause;
+        }
+        if (!gamepad1.b) {bHeld = false;}
+
+        if (pause)
+        {
+            telemetry.addData("", "PAUSED");
+            PowerWheels(0, 0, 0);
+            return;
+        }
+
+        int inBounds;
+        if (position < -BOUNDS) {inBounds = 0;} //too far back
+        else if (position > BOUNDS) {inBounds = 2;} //too far front
         else {inBounds = 1;} //in bounds
 
-        if (now.milliseconds() - inputTimeCheck >= inputTime)
+        if (now.milliseconds() - inputTimeCheck >= inputTime || inBounds != 1)
         {
             //Degrees in a revolution * motor practical max revolutions per second
-            int input = -(28 * 7 * inBounds) + rand.nextInt(2 * 28 * 7);
+            int input = 0;
+            //This, well, prevents aggressive braking that can mess up encoders and isn't really practical
+            //(I don't plan on doing wheelies during autonomous)
+            if (preventAggressiveBraking == 0)
+            {
+                input = -(TICKS_PER_REV) + rand.nextInt(TICKS_PER_REV);
+                preventAggressiveBraking = 1;
+            }
+            else if (preventAggressiveBraking == 2)
+            {
+                input = rand.nextInt(TICKS_PER_REV);
+                preventAggressiveBraking = 1;
+            }
+            else
+            {input = -(TICKS_PER_REV * 6 * inBounds) + rand.nextInt(2 * TICKS_PER_REV * 6);}
             inputTime = 50 + rand.nextInt(750); //milliseconds (min. 50, max. 800)
             inputTimeCheck = (long) now.milliseconds();
+
+            if (input < -TICKS_PER_REV * 4) {preventAggressiveBraking = 0;} //going backwards very fast
+            else if (input > TICKS_PER_REV * 4) {preventAggressiveBraking = 2;} //going forwards very fast
 
             axValues = new int[]{0, 0, 0};
             axValues[currentAx] = Math.toIntExact(input);
@@ -143,17 +212,7 @@ public class ChassisModelFormer extends OpMode
             lastLogTime = (long) now.milliseconds();
         }
 
-        //Switch axes
-        if (gamepad1.a && !aHeld)
-        {
-            aHeld = true;
-            currentAx++;
-            if (currentAx >= 3) {currentAx = 0;}
-        }
-        if (!gamepad1.a) {aHeld = false;}
-
-        telemetry.addData("X VELOCITY", pinpoint.getVelX(DistanceUnit.INCH));
-        telemetry.addData("X POSITION", pinpoint.getPosX(DistanceUnit.INCH));
+        if (preventAggressiveBraking != 1) {telemetry.addData("", "PREVENT AGGRESSIVE BRAKING");}
     }
 
     public void PowerWheels(double axial, double lateral, double yaw)

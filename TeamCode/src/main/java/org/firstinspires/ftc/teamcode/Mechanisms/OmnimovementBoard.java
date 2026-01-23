@@ -14,7 +14,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 @Configurable
 public class OmnimovementBoard
 {
-    public static double IMU_KP = 0.1;
+    public static double IMU_KP = 0;
     public static double IMU_KD = 0;
 
     MotorEx leftFrontWheel;

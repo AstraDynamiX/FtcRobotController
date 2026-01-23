@@ -11,11 +11,6 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
 import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
-import com.seattlesolvers.solverslib.hardware.servos.ServoEx;
-
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-
-import java.util.List;
 
 @Configurable
 public class LaunchBoard
@@ -23,9 +18,13 @@ public class LaunchBoard
     private final double GOAL_HEIGHT = 38.19; //in
     private final double FLYWHEEL_RADIUS = 1.89; //in
     private final double TICKS_PER_REV = 28; //Every GoBilda 5202 series motor has 28 TPR
+    public static double TURRET_KP = 12;
 
     CameraBoard CamBoard = new CameraBoard();
     ElapsedTime stopperTimer = new ElapsedTime();
+    ElapsedTime turretTimer = new ElapsedTime();
+    ElapsedTime aprilTagTimer = new ElapsedTime();
+
 
     private DcMotor intake;
     private MotorEx leftFlywheel;
@@ -55,10 +54,10 @@ public class LaunchBoard
         rightFlywheel = initMotor(hwMap, true, "rightFlywheel",
                 3.25, 4.5, 0);
 
-        turret = new MotorEx(hwMap, "turret", Motor.GoBILDA.RPM_435);
+        turret = new MotorEx(hwMap, "turret", 28, 435);
+        turret.resetEncoder();
         turret.setRunMode(MotorEx.RunMode.PositionControl);
-        turret.setCachingTolerance(0.0001);
-        turret.setPositionCoefficient(0.09);
+        turret.setPositionCoefficient(0.1);
         turret.setPositionTolerance(2);
 
         //stopper = new ServoEx(hwMap, "stopper", 180, AngleUnit.DEGREES);
@@ -90,23 +89,36 @@ public class LaunchBoard
         rightFlywheel.setVelocity(input);
     }
 
-    public void TurretLockPosition(double input)
+    public void TurretCounterYaw()
     {
-        turret.setTargetPosition((int)input);
-        if (turret.atTargetPosition()) {turret.set(0.035);}
-        else {turret.set(0.1);}
+        turret.setVelocity(0);
     }
 
     public void TurretMovement()
     {
-        double[] aprilTagDimensions = CamBoard.GetAprilTag(24);
-        double aprilTagDistance = aprilTagDimensions[0];
-        double aprilTagBearing = aprilTagDimensions[1];
+        double aprilTagBearing = CamBoard.GetAprilTag(24, "bearing");
+        double bearingTicks = -aprilTagBearing / 360 * TICKS_PER_REV * 3  * TURRET_KP; //gear ratio 3/1
+        turret.setTargetPosition((int) (turret.getCurrentPosition() + bearingTicks));
 
-        if (aprilTagDistance == 0 || aprilTagBearing == 0) {return;}
-        turret.setTargetPosition((int)(TICKS_PER_REV * atan(aprilTagDistance/aprilTagBearing) / 360 * 10)); //gear ratio 10/1
-        if (turret.atTargetPosition()) {turret.set(0.05);}
-        else {turret.set(0.1);}
+        if (turret.atTargetPosition()) {turret.set(0);}
+        else {turret.set(0.125);}
+
+        /*if (aprilTagBearing == 400 /*&& aprilTagTimer.milliseconds() > 400 ) {
+                turret.setVelocity(0);
+              if (turretTimer.milliseconds() < 1500) {turret.setVelocity(-41);}
+              else {turret.setVelocity(41);}
+            if (turretTimer.milliseconds()>3000){turretTimer.reset();}
+              aprilTagTimer.reset();
+        }
+        else {
+            error = (aprilTagBearing / 360);
+            P = error * TURRETKP;
+            D = TURRETKD * (error - errorOld);
+            integral += error;
+            I = TURRETKI * integral;
+            turret.setVelocity((int)((P + D + I) * TICKS_PER_REV * 3));//gear ratio 3/1
+            errorOld = error;
+            turretTimer.reset();}*/
     }
 
     public void AngleAdjusterMovement(double input) {adjusterAngle += input;}
@@ -122,7 +134,7 @@ public class LaunchBoard
         SHOOTING,
     }
 
-    public void Intake() //Temporary until automatic detection
+    public void Intake() //Temporary until automatic detection1
     {
         launchState = LaunchState.EATING;
         adjusterAngle -= 0.75 * ballsShot;
@@ -142,14 +154,11 @@ public class LaunchBoard
     public double getLaunchAngle() {return launchAngle;}
 
     public double getTurretPosition() {return turret.getCurrentPosition();}
-    public double getTurretInput()
+    public double getBearingTicks()
     {
-        double[] aprilTagDimensions = CamBoard.GetAprilTag(24);
-        double aprilTagDistance = aprilTagDimensions[0];
-        double aprilTagBearing = aprilTagDimensions[1];
-
-        if (aprilTagDistance == 0 || aprilTagBearing == 0) {return 0;}
-        return (TICKS_PER_REV * atan(aprilTagDistance/aprilTagBearing) / 360 * 10); //gear ratio 10/1
+        double aprilTagBearing = CamBoard.GetAprilTag(24, "bearing");
+        double bearingTicks = -aprilTagBearing / 360 * TICKS_PER_REV * 3 * TURRET_KP;
+        return bearingTicks;
     }
 
     public void UpdateLaunch(boolean camAdjustment, double flywheelMultiplier)
@@ -186,7 +195,7 @@ public class LaunchBoard
                         flywheelPower = Math.sqrt(386.09 * (GOAL_HEIGHT + hypotenuse)); //gravitational acceleration in in/s^2
                     }
                     // 0.0873 rad = 5 deg, 0.611 rad = 35 deg
-                    double adjusterAngle = 0.9 - Range.scale(launchAngle, 0.0873, 0.611, 0.1, 0.9);
+                    double adjusterAngle = 0.8 - Range.scale(launchAngle, 0.0873, 0.611, 0, 0.8);
                     angleAdjuster.setPosition(adjusterAngle);
                     FlywheelMovement(TICKS_PER_REV * flywheelPower / (2 * 3.1415 * FLYWHEEL_RADIUS)); //Divide by that to get RPS
                 }
