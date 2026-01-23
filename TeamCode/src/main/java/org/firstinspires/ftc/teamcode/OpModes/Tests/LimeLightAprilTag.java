@@ -4,6 +4,7 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.Range;
 
 @Autonomous
@@ -12,7 +13,7 @@ public class LimeLightAprilTag extends OpMode {
     DcMotor turret;
 
     // CAMERA OFFSET - tx când e centrat pe goal
-    private static final double CAMERA_OFFSET_TX = 7.60;
+    private static final double CAMERA_OFFSET_TX = 0;
 
     // Control simplu și rapid
     private final double kP = 0.055;              // Proportional gain
@@ -32,7 +33,7 @@ public class LimeLightAprilTag extends OpMode {
         turret.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER); // IMPORTANT - nu folosim RUN_TO_POSITION
 
         // Dacă se mișcă în direcția greșită, decomentează:
-        turret.setDirection(DcMotor.Direction.REVERSE);
+        turret.setDirection(DcMotor.Direction.FORWARD);
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(7);
@@ -79,13 +80,13 @@ public class LimeLightAprilTag extends OpMode {
         power = Range.clip(power, -maxPower, maxPower);
 
         // Verifică limite - CORECTATĂ
-        if ((currentPosDegrees <= MAX_CCW && power > 0) ||   // La -90° și vrea să meargă mai negativ
-                (currentPosDegrees >= MAX_CW && power < 0)) {    // La 180° și vrea să meargă mai pozitiv
+        if ((currentPosDegrees <= MAX_CCW && power < 0) ||   // La -90° și vrea să meargă mai negativ
+                (currentPosDegrees >= MAX_CW && power > 0)) {    // La 180° și vrea să meargă mai pozitiv
             turret.setPower(0);
             telemetry.addLine("⚠️ At limit");
             telemetry.addData("Which limit?", currentPosDegrees <= MAX_CCW ? "CCW (-90°)" : "CW (+180°)");
         } else {
-            turret.setPower(-power);
+            turret.setPower(power);
 
             String direction = error > 0 ? "<- LEFT" : "RIGHT ->";
             telemetry.addData("Tracking", direction);
