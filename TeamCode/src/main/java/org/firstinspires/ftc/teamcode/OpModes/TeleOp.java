@@ -150,7 +150,7 @@ public class TeleOp extends OpMode {
         {
             telemetry.addData("APRIL TAG DISTANCE", LaunchBoard.getAprilTagDistance(24));
             telemetry.addData("APRIL TAG BEARING", LaunchBoard.getAprilTagBearing(24));
-            telemetry.addData("FLYWHEEL POWER", LaunchBoard.getFlywheelPower());
+            telemetry.addData("FLYWHEEL POWER", LaunchBoard.getFlywheelSpeed());
             telemetry.addData("LAUNCH ANGLE", LaunchBoard.getLaunchAngle());
             telemetry.addData("", "");
             telemetry.addData("BEARING TICKS", LaunchBoard.getBearingTicks());
