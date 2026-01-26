@@ -15,6 +15,7 @@ import com.seattlesolvers.solverslib.hardware.servos.ServoEx;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Configurable
@@ -218,6 +219,90 @@ public class LaunchBoard
                 FlywheelMovement(0);
                 break;
         }
+    }
+
+    // ------ Functions that help with calculating launch angle and speed ------
+
+    private double LaunchSpeed(double launchAngle, double x, double alpha)
+    {
+        return Math.sqrt(
+                (9.81 * x * Math.cos(launchAngle) * Math.cos(alpha)) /
+                        Math.sin(launchAngle + alpha)
+        );
+    }
+
+    //Separate function into sections and find sections in which function crosses 0
+    //to find all roots, because function below only converges to one of potential two solutions
+    List<Double> FindAllLaunchAngles(
+            double x, double y, double h, double alpha
+    ) {
+        List<Double> roots = new ArrayList<>();
+
+        double start = Math.toRadians(50.0);
+        double end = Math.toRadians(85.0);
+        int sections = 100;
+
+        double section = (end - start) / sections;
+
+        double sectionStart = start;
+        double fSectionStart = LaunchAngleFunction(sectionStart, x, y, h, alpha);
+
+        for (int i = 1; i <= sections; i++)
+        {
+            double sectionEnd = start + i * section;
+            double fSectionEnd = LaunchAngleFunction(sectionEnd, x, y, h, alpha);
+
+            if (fSectionStart * fSectionEnd <= 0) //Function crosses 0, so a root is there
+            {
+                Double root = SearchForLaunchAngle(x, y, h, alpha, sectionStart, sectionEnd);
+                if (root != null) {roots.add(root);}
+            }
+
+            sectionStart = sectionEnd;
+            fSectionStart = fSectionEnd;
+        }
+
+        return roots;
+    }
+
+    //Bisection, if one angle overshoots and another undershoots then the
+    //correct angle is somewhere in the middle
+    private Double SearchForLaunchAngle(
+            double x, double y, double h, double alpha,
+            double launchAngleMin, double launchAngleMax
+    ) {
+        double fLaunchAngleMin = LaunchAngleFunction(launchAngleMin, x, y, h, alpha);
+        double fLaunchAngleMax = LaunchAngleFunction(launchAngleMax, x, y, h, alpha);
+
+        //Same sign, so top assumption is false, so there's no solution
+        if (fLaunchAngleMin * fLaunchAngleMax > 0) {return null;}
+
+        for (int i = 0; i < 50; i++) //~1e-15 precision
+        {
+            double launchAngleMid = 0.5 * (launchAngleMin + launchAngleMax);
+            double fLaunchAngleMid = LaunchAngleFunction(launchAngleMid, x, y, h, alpha);
+
+            //Opposite signs, so correct angle is in between
+            if (fLaunchAngleMin * fLaunchAngleMid <= 0)
+            {
+                launchAngleMax = launchAngleMid;
+                fLaunchAngleMax = fLaunchAngleMid;
+            } else {
+                launchAngleMin = launchAngleMid;
+                fLaunchAngleMin = fLaunchAngleMid;
+            }
+        }
+        //Practically converges to one value because the difference becomes insignificant
+        return 0.5 * (launchAngleMin + launchAngleMax);
+    }
+
+    //The closer the value this returns is to 0, the closer to the correct launch angle
+    //(check technical book for how we got to this equation)
+    private double LaunchAngleFunction(double launchAngle, double x, double y, double h, double alpha)
+    {
+        return x * Math.tan(launchAngle)
+                - (x * Math.sin(launchAngle + alpha)) / (2.0 * Math.cos(launchAngle) * Math.cos(alpha))
+                - (y - h);
     }
 
 }
