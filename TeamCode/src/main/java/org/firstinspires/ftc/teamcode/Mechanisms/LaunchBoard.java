@@ -163,7 +163,7 @@ public class LaunchBoard
         {
             case EATING:
 
-                intake.setPower(0.8);
+                intake.setPower(0.78);
                 FlywheelMovement(TICKS_PER_REV * 15); //Low-power mode
                 stopper.setPosition(0.8);
 
@@ -201,7 +201,7 @@ public class LaunchBoard
 
             case SHOOTING:
 
-                stopper.setPosition(0.45);
+                stopper.setPosition(0.48);
                 if (stopperTimer.milliseconds() < 150) {return;}
 
                 if (rightFlywheel.getVelocity() + 25 < lastFlywheelSpeed && ballsShot < 3)
