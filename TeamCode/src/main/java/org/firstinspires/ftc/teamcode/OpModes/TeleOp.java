@@ -34,7 +34,6 @@ public class TeleOp extends OpMode {
 
     private int launchState = 0;
     private double flywheelMultiplier = 0.65;
-    private boolean cameraInitialized = false;
     private boolean camAdjustment = false;
 
     @Override
@@ -69,12 +68,6 @@ public class TeleOp extends OpMode {
         {
             options1Held = true;
             camAdjustment = !camAdjustment;
-
-            if (!cameraInitialized)
-            {
-                LaunchBoard.initCamera(hardwareMap);
-                cameraInitialized = true;
-            }
         }
         if (!gamepad1.options) {options1Held = false;}
 
@@ -140,20 +133,18 @@ public class TeleOp extends OpMode {
 
         //Functions that get called every loop with no conditions
         LaunchBoard.UpdateLaunch(camAdjustment, flywheelMultiplier);
-        if (camAdjustment) {LaunchBoard.TurretMovement();}
-        else {LaunchBoard.TurretCounterYaw();}
         LaunchBoard.UpdateAngleAdjuster();
+        if (camAdjustment) {LaunchBoard.TurretMovement();}
+        else {LaunchBoard.TurretLockPosition(0);}
 
         // ------ Telemetry ------
         telemetry.addData("CAM ADJUSTMENT", camAdjustment);
         if (camAdjustment)
         {
-            telemetry.addData("APRIL TAG DISTANCE", LaunchBoard.getAprilTagDistance(24));
-            telemetry.addData("APRIL TAG BEARING", LaunchBoard.getAprilTagBearing(24));
-            telemetry.addData("FLYWHEEL POWER", LaunchBoard.getFlywheelSpeed());
+            telemetry.addData("APRIL TAG DISTANCE", LaunchBoard.getAprilTagDistance());
+            telemetry.addData("APRIL TAG BEARING", LaunchBoard.getAprilTagBearing());
             telemetry.addData("LAUNCH ANGLE", LaunchBoard.getLaunchAngle());
             telemetry.addData("", "");
-            telemetry.addData("BEARING TICKS", LaunchBoard.getBearingTicks());
             telemetry.addData("TURRET POSITION", LaunchBoard.getTurretPosition());
         }
         else

@@ -170,29 +170,29 @@ public class SensorGoBildaPinpointExample extends LinearOpMode {
              */
             Pose2D pos = pinpoint.getPosition();
 
-            double x = pos.getX(DistanceUnit.INCH);
-            double y = pos.getY(DistanceUnit.INCH);
-            double heading = pos.getHeading(AngleUnit.DEGREES);
+            double velX = pinpoint.getVelX(DistanceUnit.INCH);
+            double velY = pinpoint.getVelY(DistanceUnit.INCH);
+            double heading = pinpoint.getHeading(UnnormalizedAngleUnit.RADIANS);
 
             String data = String.format(Locale.US, "{X: %.3f, Y: %.3f, H: %.3f}",
-                    x,
-                    y,
+                    pos.getX(DistanceUnit.INCH),
+                    pos.getY(DistanceUnit.INCH),
                     heading);
             telemetry.addData("Position", data);
-
-            String dataRobotCentric = String.format(Locale.US, "{X: %.3f, Y: %.3f, H: %.3f}",
-                    Math.cos(heading) * x + Math.sin(heading) * y,
-                    -Math.sin(heading) * x + Math.cos(heading) * y,
-                    heading);
-            telemetry.addData("Position", dataRobotCentric);
             /*
             gets the current Velocity (x & y in mm/sec and heading in degrees/sec) and prints it.
              */
             String velocity = String.format(Locale.US,"{XVel: %.3f, YVel: %.3f, HVel: %.3f}",
-                    pinpoint.getVelX(DistanceUnit.INCH),
-                    pinpoint.getVelY(DistanceUnit.INCH),
-                    pinpoint.getHeadingVelocity(UnnormalizedAngleUnit.DEGREES));
+                    velX,
+                    velY,
+                    pinpoint.getHeadingVelocity(UnnormalizedAngleUnit.RADIANS));
             telemetry.addData("Velocity", velocity);
+
+            String robotCentricVelocity = String.format(Locale.US,"{XVel: %.3f, YVel: %.3f, HVel: %.3f}",
+                    velX * Math.cos(heading) + velY * Math.sin(heading),
+                    velX * -Math.sin(heading) + velY * Math.cos(heading),
+                    pinpoint.getHeadingVelocity(UnnormalizedAngleUnit.RADIANS));
+            telemetry.addData("Robot centric velocity", robotCentricVelocity);
 
 
             /*

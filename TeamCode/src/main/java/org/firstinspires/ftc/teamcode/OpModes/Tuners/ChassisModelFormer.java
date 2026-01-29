@@ -44,22 +44,24 @@ import java.util.Random;
 public class ChassisModelFormer extends OpMode
 {
     private final int TICKS_PER_REV = 28;
-    private final double BOUNDS = 37; //in - how much room the robot has
+    private final double BOUNDS = 55; //in - how much room the robot has
+    private final double MAX_DELTA_PER_SEC = TICKS_PER_REV * 3;
 
-    MotorEx leftFrontWheel;
     MotorEx rightFrontWheel;
     MotorEx leftBackWheel;
+    MotorEx leftFrontWheel;
     MotorEx rightBackWheel;
-    GoBildaPinpointDriver pinpoint;
-
-    private FileWriter writer;
-    Random rand = new Random();
     ElapsedTime now = new ElapsedTime();
 
     private long lastLogTime;
-    private int inputTime = 100;
+    private long inputTime = 100;
     private long inputTimeCheck = 0;
 
+    GoBildaPinpointDriver pinpoint;
+    private FileWriter writer;
+    Random rand = new Random();
+
+    private int input = 0;
     private int currentAx = 0;
     private int[] axValues = new int[]{0, 0, 0};
     private boolean pause = false;
@@ -116,6 +118,7 @@ public class ChassisModelFormer extends OpMode
         MotorEx motor;
         motor = new MotorEx(hwMap, name, TICKS_PER_REV, 435);
         motor.setRunMode(MotorEx.RunMode.VelocityControl);
+        motor.setVeloCoefficients(0, 0, 0); //No PID since that's what we're trying to find
         motor.setInverted(inverted);
         motor.setCachingTolerance(0.075);
         return motor;
@@ -125,13 +128,16 @@ public class ChassisModelFormer extends OpMode
     public void loop()
     {
         pinpoint.update();
-        double position = 0;
-        switch (currentAx)
-        {
-            case 0: position = pinpoint.getPosX(DistanceUnit.INCH); break;
-            case 1: position = pinpoint.getPosY(DistanceUnit.INCH); break;
-        }
-        telemetry.addData("POSITION", position);
+        double posX = pinpoint.getPosX(DistanceUnit.INCH);
+        double posY = pinpoint.getPosY(DistanceUnit.INCH);
+        double distanceFromCenter = posX*posX + posY*posY;
+        double heading = pinpoint.getHeading(UnnormalizedAngleUnit.RADIANS);
+        double velX = pinpoint.getVelX(DistanceUnit.INCH);
+        double velY = pinpoint.getVelY(DistanceUnit.INCH);
+
+        telemetry.addData("X", posX);
+        telemetry.addData("Y", posY);
+        telemetry.addData("DISTANCE FROM CENTER", distanceFromCenter);
 
         //Switch axes
         if (gamepad1.a && !aHeld)
@@ -160,28 +166,33 @@ public class ChassisModelFormer extends OpMode
         }
 
         int inBounds;
-        if (position < -BOUNDS) {inBounds = 0;} //too far back
-        else if (position > BOUNDS) {inBounds = 2;} //too far front
+        if (distanceFromCenter > BOUNDS*BOUNDS)
+        {inBounds = (input < 0) ? 0 : 2;} //0 = too far back, 2 = too far front
         else {inBounds = 1;} //in bounds
 
         if (now.milliseconds() - inputTimeCheck >= inputTime || inBounds != 1)
         {
             //Degrees in a revolution * motor practical max revolutions per second
-            int input = 0;
-            //This, well, prevents aggressive braking that can mess up encoders and isn't really practical
+            //Prevent aggressive braking that can mess up encoders and isn't really practical
             //(I don't plan on doing wheelies during autonomous)
-            if (preventAggressiveBraking == 0)
+            int targetInput;
+
+            switch (inBounds)
             {
-                input = -(TICKS_PER_REV) + rand.nextInt(TICKS_PER_REV);
-                preventAggressiveBraking = 1;
+                case 0: targetInput = rand.nextInt(TICKS_PER_REV * 6); break;
+                case 1: targetInput = rand.nextInt(2 * TICKS_PER_REV * 6) - TICKS_PER_REV * 6; break;
+                case 2: targetInput = -rand.nextInt(TICKS_PER_REV * 6); break;
+                default: targetInput = 0;
             }
-            else if (preventAggressiveBraking == 2)
-            {
-                input = rand.nextInt(TICKS_PER_REV);
-                preventAggressiveBraking = 1;
-            }
-            else
-            {input = -(TICKS_PER_REV * 6 * inBounds) + rand.nextInt(2 * TICKS_PER_REV * 6);}
+
+            double deltaTime = (now.milliseconds() - inputTimeCheck) / 1000.0;
+            int maxDelta = (int)(MAX_DELTA_PER_SEC * deltaTime);
+
+            int delta = targetInput - input;
+            delta = Math.max(-maxDelta, Math.min(maxDelta, delta)); //Enforce -maxDelta <= delta <= maxDelta
+
+            input += delta;
+
             inputTime = 50 + rand.nextInt(750); //milliseconds (min. 50, max. 800)
             inputTimeCheck = (long) now.milliseconds();
 
@@ -202,8 +213,8 @@ public class ChassisModelFormer extends OpMode
                         axValues[0] + "," +
                         axValues[1] + "," +
                         axValues[2] + "," +
-                        pinpoint.getVelX(DistanceUnit.INCH) + "," +
-                        pinpoint.getVelY(DistanceUnit.INCH) + "," +
+                        velX * Math.cos(heading) + velY * Math.sin(heading) + "," +
+                        velX * -Math.sin(heading) + velY * Math.cos(heading) + "," +
                         pinpoint.getHeadingVelocity(UnnormalizedAngleUnit.RADIANS) + '\n'
                 );
             }

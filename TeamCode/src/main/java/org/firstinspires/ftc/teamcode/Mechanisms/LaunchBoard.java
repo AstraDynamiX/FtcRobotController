@@ -21,11 +21,14 @@ import java.util.List;
 @Configurable
 public class LaunchBoard
 {
-    private final double GOAL_HEIGHT = 38.19; //in
+    private final double GOAL_HEIGHT = 42; //in; 38.19 - physical goal height
     private final double FLYWHEEL_RADIUS = 1.89; //in
     private final double TICKS_PER_REV = 28; //Every GoBilda 5202 series motor has 28 TPR
 
-    CameraBoard CamBoard = new CameraBoard();
+    public static double TURRET_KP = 15;
+    public static double FLYWHEEL_KP = 6.5;
+
+    LimeLightBoard CamBoard = new LimeLightBoard();
     ElapsedTime stopperTimer = new ElapsedTime();
 
     private DcMotor intake;
@@ -41,7 +44,7 @@ public class LaunchBoard
     private LaunchState launchState = LaunchState.IDLE;
 
     private double launchAngle = 0;
-    private double flywheelPower = 0;
+    private double flywheelSpeed = 0;
     private double ballsShot = 0;
     private double lastFlywheelSpeed = 0;
     private double adjusterAngle = 0.35;
@@ -49,6 +52,7 @@ public class LaunchBoard
 
     public void init(HardwareMap hwMap)
     {
+        CamBoard.init(hwMap, 7);
         //Initialize motors and servos
         intake = hwMap.get(DcMotor.class, "intake");
         leftFlywheel = initMotor(hwMap, false, "leftFlywheel",
@@ -59,7 +63,7 @@ public class LaunchBoard
         turret = new MotorEx(hwMap, "turret", Motor.GoBILDA.RPM_435);
         turret.setRunMode(MotorEx.RunMode.PositionControl);
         turret.setCachingTolerance(0.0001);
-        turret.setPositionCoefficient(0.09);
+        turret.setPositionCoefficient(0.2);
         turret.setPositionTolerance(2);
 
         //stopper = new ServoEx(hwMap, "stopper", 180, AngleUnit.DEGREES);
@@ -81,8 +85,6 @@ public class LaunchBoard
         return motor;
     }
 
-    public void initCamera(HardwareMap hwMap) {CamBoard.init(hwMap);}
-
     public void IntakeMovement(double input) {intake.setPower(input);}
 
     public void FlywheelMovement(double input)
@@ -100,13 +102,20 @@ public class LaunchBoard
 
     public void TurretMovement()
     {
-        double[] aprilTagDimensions = CamBoard.GetAprilTag(24);
-        double aprilTagDistance = aprilTagDimensions[0];
-        double aprilTagBearing = aprilTagDimensions[1];
+        double aprilTagBearing = CamBoard.GetAprilTag("bearing");
+        if (aprilTagBearing == 400) {return;}
 
-        if (aprilTagDistance == 0 || aprilTagBearing == 0) {return;}
-        turret.setTargetPosition((int)(TICKS_PER_REV * atan(aprilTagDistance/aprilTagBearing) / 360 * 10)); //gear ratio 10/1
-        if (turret.atTargetPosition()) {turret.set(0.05);}
+        double bearingTicks = aprilTagBearing / 360 * TICKS_PER_REV;
+        double turretPosition = turret.getCurrentPosition();
+        double turretTargetPosition = turretPosition - (bearingTicks * TURRET_KP);
+
+        if (((turretPosition < -240 && turretTargetPosition < 0) ||
+            (turretPosition > 450 && turretTargetPosition - turretPosition > 0))
+        )
+        {turret.setTargetPosition(turret.getCurrentPosition());}
+        else {turret.setTargetPosition((int) turretTargetPosition);}
+
+        if (turret.atTargetPosition()) {turret.set(0.035);}
         else {turret.set(0.1);}
     }
 
@@ -114,7 +123,8 @@ public class LaunchBoard
     public void UpdateAngleAdjuster() {angleAdjuster.setPosition(adjusterAngle);}
     public double getAdjusterAngle() {return adjusterAngle;}
 
-    // --- Intake state machine ---
+    // ------ Intake state machine ------
+
     enum LaunchState
     {
         IDLE,
@@ -137,21 +147,15 @@ public class LaunchBoard
     }
     public void Idle() {launchState = LaunchState.IDLE;}
 
-    public double getAprilTagDistance(int id) {return CamBoard.GetAprilTag(id, "range");}
-    public double getAprilTagBearing(int id) {return CamBoard.GetAprilTag(id, "bearing");}
-    public double getFlywheelPower() {return flywheelPower;}
+    public double getAprilTagDistance() {return CamBoard.GetAprilTag("range");}
+    public double getAprilTagBearing()
+    {
+        double bearingTicks = CamBoard.GetAprilTag("bearing") / 360 * TICKS_PER_REV;
+        return bearingTicks * TURRET_KP;
+    }
     public double getLaunchAngle() {return launchAngle;}
 
     public double getTurretPosition() {return turret.getCurrentPosition();}
-    public double getTurretInput()
-    {
-        double[] aprilTagDimensions = CamBoard.GetAprilTag(24);
-        double aprilTagDistance = aprilTagDimensions[0];
-        double aprilTagBearing = aprilTagDimensions[1];
-
-        if (aprilTagDistance == 0 || aprilTagBearing == 0) {return 0;}
-        return (TICKS_PER_REV * atan(aprilTagDistance/aprilTagBearing) / 360 * 10); //gear ratio 10/1
-    }
 
     public void UpdateLaunch(boolean camAdjustment, double flywheelMultiplier)
     {
@@ -161,7 +165,7 @@ public class LaunchBoard
 
                 intake.setPower(0.8);
                 FlywheelMovement(TICKS_PER_REV * 15); //Low-power mode
-                stopper.setPosition(0.9);
+                stopper.setPosition(0.8);
 
                 /*double distance = ballDistance.getDistance(DistanceUnit.CM);
 
@@ -178,18 +182,18 @@ public class LaunchBoard
 
                 if (camAdjustment)
                 {
-                    double distance = CamBoard.GetAprilTag(24, "range");
+                    double distance = CamBoard.GetAprilTag("range");
 
                     if (distance != -1)
                     {
-                        double hypotenuse = Math.sqrt(distance * distance + GOAL_HEIGHT * GOAL_HEIGHT);
-                        launchAngle = atan((GOAL_HEIGHT + hypotenuse) / distance);
-                        flywheelPower = Math.sqrt(386.09 * (GOAL_HEIGHT + hypotenuse)); //gravitational acceleration in in/s^2
+                        launchAngle = 0;
+                        flywheelSpeed = 0;
                     }
                     // 0.0873 rad = 5 deg, 0.611 rad = 35 deg
-                    double adjusterAngle = 0.9 - Range.scale(launchAngle, 0.0873, 0.611, 0.1, 0.9);
+                    double adjusterAngle = 0.8 - Range.scale(launchAngle, 0.0873, 0.611, 0, 0.8);
                     angleAdjuster.setPosition(adjusterAngle);
-                    FlywheelMovement(TICKS_PER_REV * flywheelPower / (2 * 3.1415 * FLYWHEEL_RADIUS)); //Divide by that to get RPS
+                    //Divide by 2*pi*radius to get RPS then multiply by TPR to get TPS (ticks per second)
+                    FlywheelMovement(TICKS_PER_REV * flywheelSpeed / (2 * 3.1415 * FLYWHEEL_RADIUS));
                 }
                 else {FlywheelMovement(flywheelMultiplier * TICKS_PER_REV * 100);}
 
@@ -225,8 +229,9 @@ public class LaunchBoard
 
     private double LaunchSpeed(double launchAngle, double x, double alpha)
     {
+        //gravitational acceleration in in/s^2 = 386.09
         return Math.sqrt(
-                (9.81 * x * Math.cos(launchAngle) * Math.cos(alpha)) /
+                (386.09 * x * Math.cos(launchAngle) * Math.cos(alpha)) /
                         Math.sin(launchAngle + alpha)
         );
     }
