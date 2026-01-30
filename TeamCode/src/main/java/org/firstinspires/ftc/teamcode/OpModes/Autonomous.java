@@ -12,6 +12,7 @@ import org.firstinspires.ftc.teamcode.Mechanisms.LaunchBoard;
 import org.firstinspires.ftc.teamcode.Mechanisms.OmnimovementBoard;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -30,25 +31,39 @@ public class Autonomous extends OpMode
     ElapsedTime opModeTimer = new ElapsedTime();
     ElapsedTime timer = new ElapsedTime();
 
-    private final Pose start = new Pose(25.083168545284792,131.24159529402453,Math.toRadians(143.8));
-    private final Pose shoot = new Pose(55.78587124798748,87.34970340213259,Math.toRadians(135));
-    private final Pose intake1Start = new Pose(52.29729670270271, 85.27027027027026, Math.toRadians(-180));
-    private final Pose intake1End = new Pose(19.299384761501017, 85.27027027027029, Math.toRadians(-180));
-    private final Pose intake2Start = new Pose(45.08108108108108,59.7027027027027,Math.toRadians(-180));
-    private final Pose intake2End = new Pose(17.702702702702702,59.594594594594,Math.toRadians(-180));
-    private final Pose end = new Pose(115.51351351351352,23.108108108108105,Math.toRadians(-135));
+    //Asta e ala de la far albastru
+    private Pose startFar = new Pose(56,8,Math.toRadians(90));
+    private Pose shootFar = new Pose(57.72972972972973,13.513513513513509,Math.toRadians(110));
+    private Pose intake1StartFar = new Pose(55.864864864864856, 35.24324324324324, Math.toRadians(-180));
+    private Pose intake1EndFar = new Pose(20.540540540540533, 35.24324324324324, Math.toRadians(-180));
+    private Pose intake2StartFar = new Pose(20.91891891891892,44.837837837837846,Math.toRadians(-95));
+    private Pose intake2EndFar = new Pose(18,17.45945945945946,Math.toRadians(-95));
+    private Pose endFar = new Pose(38.108108108108105,26.29729729729731,Math.toRadians(-150));
+
+    //Asta e ala de la close albastru
+    private Pose startClose = new Pose(25.083168545284792,131.24159529402453,Math.toRadians(143.8));
+    private Pose shootClose = new Pose(55.78587124798748,87.34970340213259,Math.toRadians(135));
+    private Pose intake1StartClose = new Pose(52.29729670270271, 85.27027027027026, Math.toRadians(-180));
+    private Pose intake1EndClose = new Pose(19.299384761501017, 85.27027027027029, Math.toRadians(-180));
+    private Pose intake2StartClose = new Pose(45.08108108108108,59.7027027027027,Math.toRadians(-180));
+    private Pose intake2EndClose = new Pose(17.702702702702702,59.594594594594,Math.toRadians(-180));
+    private Pose endClose = new Pose(115.51351351351352,23.108108108108105,Math.toRadians(-135));
+
 
     private final Map<String, PathChain> paths = new LinkedHashMap<>();
     Iterator<Map.Entry<String, PathChain>> iterator;
     //Run extra code at the end of each path
-    private List<String> specialIds;
+    private final List<String> specialIds = new ArrayList<>();
     Iterator<String> idIterator;
 
     boolean aHeld = false;
+    boolean bHeld = false;
     boolean redAlliance = false;
+    boolean close = false;
 
     PathChain path;
     double timerGoal = 0;
+    double maxPower = 1;
     boolean waiting = false;
 
 
@@ -63,7 +78,15 @@ public class Autonomous extends OpMode
 
         follower = Constants.createFollower(hardwareMap);
         BuildPaths();
-        follower.setPose(start);
+        if(close)
+        {
+            follower.setPose(startClose);
+        }
+        else
+        {
+            follower.setPose(startFar);
+        }
+
 
         iterator = paths.entrySet().iterator();
         idIterator = specialIds.iterator();
@@ -79,7 +102,15 @@ public class Autonomous extends OpMode
         }
         if(!gamepad1.a) {aHeld = false;}
 
+        if (gamepad1.b && !bHeld)
+        {
+            bHeld = true;
+            close = !close;
+        }
+        if(!gamepad1.b) {bHeld = false;}
+
         telemetry.addData("ALLIANCE", (redAlliance) ? "red" : "blue");
+        telemetry.addData("POSITION",(close)? "close":"far");
     }
 
 
@@ -95,22 +126,58 @@ public class Autonomous extends OpMode
     {
         follower.update();
         StatePathUpdate();
+        LaunchBoard.UpdateLaunch(false, 0.8);
+        LaunchBoard.TurretLockPosition(0);
 
         if (opModeTimer.seconds() > 30) {requestOpModeStop();}
     }
 
 
     public void BuildPaths()
-    {
-        AddPath(start, shoot);
-        AddPath(shoot, intake1Start, "shoot");
-        AddPath(intake1Start, intake1End, "intake");
-        AddPath(intake1End, shoot, "rev");
-        AddPath(shoot, intake2Start, "shoot");
-        AddPath(intake2Start, intake2End, "intake");
-        AddPath(intake2Start, shoot, "rev");
-        AddPath(shoot, end, "shoot");
-    }
+    {        if(close) {
+                if(redAlliance)
+                {
+                    startClose = new Pose((72 - startClose.getX()+72),startClose.getY(),180 - startClose.getHeading());
+                    shootClose = new Pose((72 - shootClose.getX()+72),shootClose.getY(),180 - shootClose.getHeading());
+                    intake1StartClose = new Pose((72 - intake1StartClose.getX()+72),intake1StartClose.getY(),180 - intake1StartClose.getHeading());
+                    intake1EndClose = new Pose((72 - intake1EndClose.getX()+72),intake1EndClose.getY(),180 - intake1EndClose.getHeading());
+                    intake2StartClose = new Pose((72 - intake2StartClose.getX()+72),intake2StartClose.getY(),180 - intake2StartClose.getHeading());
+                    intake2EndClose = new Pose((72 - intake2EndClose.getX()+72),intake2EndClose.getY(),180 - intake2EndClose.getHeading());
+                    endClose = new Pose((72 - endClose.getX()+72),endClose.getY(),180 - endClose.getHeading());
+                }
+                AddPath(startClose, shootClose, "rev");
+                AddPath(shootClose, intake1StartClose, "shoot");
+                AddPath(intake1StartClose, intake1EndClose, "intake");
+                AddPath(intake1EndClose, shootClose, "rev");
+                AddPath(shootClose, intake2StartClose, "shoot");
+                AddPath(intake2StartClose, intake2EndClose, "intake");
+                AddPath(intake2EndClose, shootClose, "rev");//Aici e revSlow daca este din far rev norml din close
+                AddPath(shootClose, endClose, "shoot");
+            }
+            if(!close)
+            {
+                if(redAlliance)
+                {
+                    startFar = new Pose((72 - startFar.getX()+72),startFar.getY(),180 - startFar.getHeading());
+                    shootFar = new Pose((72 - shootFar.getX()+72),shootFar.getY(),180 - shootFar.getHeading());
+                    intake1StartFar = new Pose((72 - intake1StartFar.getX()+72),intake1StartFar.getY(),180 - intake1StartFar.getHeading());
+                    intake1EndFar = new Pose((72 - intake1EndFar.getX()+72),intake1EndFar.getY(),180 - intake1EndFar.getHeading());
+                    intake2StartFar = new Pose((72 - intake2StartFar.getX()+72),intake2StartFar.getY(),180 - intake2StartFar.getHeading());
+                    intake2EndFar = new Pose((72 - intake2EndFar.getX()+72),intake2EndFar.getY(),180 - intake2EndFar.getHeading());
+                    endFar = new Pose((72 - endFar.getX()+72),endFar.getY(),180 - endFar.getHeading());
+                }
+                AddPath(startFar, shootFar, "rev");
+                AddPath(shootFar, intake1StartFar, "shoot");
+                AddPath(intake1StartFar, intake1EndFar, "intake");
+                AddPath(intake1EndFar, shootFar, "rev");
+                AddPath(shootFar, intake2StartFar, "shoot");
+                AddPath(intake2StartFar, intake2EndFar, "intake");
+                AddPath(intake2EndFar, shootFar, "revSlow");
+                AddPath(shootFar, endFar, "shoot");
+            }
+        }
+
+
 
     //Path names = start pose name + end pose name
     private void AddPath(Pose start, Pose end, String specialId)
@@ -142,19 +209,27 @@ public class Autonomous extends OpMode
             switch (specialId)
             {
                 case "intake":
-
+                    follower.setMaxPower(0.5);
                     waiting = false;
                     LaunchBoard.Intake();
                     break;
 
-                case "rev":
 
+                case "rev":
+                    follower.setMaxPower(1);
+                    waiting = false;
+                    LaunchBoard.Rev();
+                    break;
+
+
+                case "revSlow":
+                    follower.setMaxPower(0.8);
                     waiting = false;
                     LaunchBoard.Rev();
                     break;
 
                 case "shoot":
-
+                    follower.setMaxPower(1);
                     timerGoal = 2000; timer.reset();
                     LaunchBoard.Shoot();
                     break;
