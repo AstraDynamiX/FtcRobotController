@@ -35,13 +35,33 @@ public class TeleOp extends OpMode {
     private int launchState = 0;
     private double flywheelMultiplier = 0.65;
     private boolean camAdjustment = false;
+    private boolean redAlliance = false;
 
     @Override
     public void init()
     {
         OmniBoard.init(hardwareMap);
-        LaunchBoard.init(hardwareMap);
+
         telemetry.addData("BOOTED:", "Welcome to AstraDynamiX Technologies!");
+    }
+
+    @Override
+    public void init_loop()
+    {
+        if (gamepad1.a && !aHeld)
+        {
+            aHeld = true;
+            redAlliance = !redAlliance;
+        }
+        if(!gamepad1.a) {aHeld = false;}
+
+        telemetry.addData("ALLIANCE", (redAlliance) ? "red" : "blue");
+    }
+
+    @Override
+    public void start()
+    {
+        LaunchBoard.init(hardwareMap, redAlliance);
     }
 
     @Override
@@ -54,15 +74,6 @@ public class TeleOp extends OpMode {
                 MOTOR_MULTIPLIER * STRAFE_MULTIPLIER
         );
 
-        /*if (gamepad1.options && !options1Held)
-        {
-            OmniBoard.SwitchDriveMode();
-            options1Held = true; fieldCentric = !fieldCentric;
-        }
-        if (!gamepad1.options) {options1Held = false;}
-
-        if (gamepad1.share) {OmniBoard.ResetIMU();}*/
-
         //Toggle cam adjustment
         if (gamepad1.options && !options1Held)
         {
@@ -70,14 +81,6 @@ public class TeleOp extends OpMode {
             camAdjustment = !camAdjustment;
         }
         if (!gamepad1.options) {options1Held = false;}
-
-        //Outtake
-        if (gamepad1.a && !aHeld)
-        {
-            yHeld = true;
-            LaunchBoard.IntakeMovement(-0.8);
-        }
-        if(!gamepad1.y) {yHeld = false;}
 
         //Shooting
         if (gamepad1.left_bumper && !leftBumperHeld)
@@ -102,7 +105,7 @@ public class TeleOp extends OpMode {
 
         if (gamepad1.y) {LaunchBoard.Idle();}
 
-        //Flywheel power adjustment
+        //Flywheel and angle adjustment
         if (gamepad1.dpad_up && !upHeld)
         {
             upHeld = true;
@@ -150,7 +153,6 @@ public class TeleOp extends OpMode {
         else
         {
             telemetry.addData("FLYWHEEL MULTIPLIER", flywheelMultiplier);
-            telemetry.addData("LAUNCH ANGLE", LaunchBoard.getAdjusterAngle());
         }
         //telemetry.addData("IMU:", OmniBoard.GetHeading() / 3.1415 + "π");
     }

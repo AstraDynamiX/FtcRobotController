@@ -50,9 +50,9 @@ public class LaunchBoard
     private double adjusterAngle = 0.35;
 
 
-    public void init(HardwareMap hwMap)
+    public void init(HardwareMap hwMap, boolean redAlliance)
     {
-        CamBoard.init(hwMap, 7);
+        CamBoard.init(hwMap, (redAlliance) ? 7 : 8);
         //Initialize motors and servos
         intake = hwMap.get(DcMotor.class, "intake");
         leftFlywheel = initMotor(hwMap, false, "leftFlywheel",
@@ -63,7 +63,7 @@ public class LaunchBoard
         turret = new MotorEx(hwMap, "turret", Motor.GoBILDA.RPM_435);
         turret.setRunMode(MotorEx.RunMode.PositionControl);
         turret.setCachingTolerance(0.0001);
-        turret.setPositionCoefficient(0.2);
+        turret.setPositionCoefficient(0.15);
         turret.setPositionTolerance(2);
 
         //stopper = new ServoEx(hwMap, "stopper", 180, AngleUnit.DEGREES);
@@ -89,6 +89,19 @@ public class LaunchBoard
 
     public void FlywheelMovement(double input)
     {
+        //Remove PID when slowing down because slowing down quickly is unnecessary
+        //and it drains battery, since motors brake instead of letting loose
+        if (input < rightFlywheel.getVelocity())
+        {
+            leftFlywheel.setVeloCoefficients(0, 0, 0);
+            rightFlywheel.setVeloCoefficients(0, 0, 0);
+        }
+        else
+        {
+            leftFlywheel.setVeloCoefficients(3.25, 4.5, 0);
+            rightFlywheel.setVeloCoefficients(3.25, 4.5, 0);
+        }
+
         leftFlywheel.setVelocity(input);
         rightFlywheel.setVelocity(input);
     }
@@ -96,23 +109,34 @@ public class LaunchBoard
     public void TurretLockPosition(double input)
     {
         turret.setTargetPosition((int)input);
-        if (turret.atTargetPosition()) {turret.set(0.035);}
+        if (turret.atTargetPosition())
+        {
+            turret.setPositionCoefficient(0.3);
+            turret.set(0.05);
+        }
         else {turret.set(0.1);}
     }
 
     public void TurretMovement()
     {
         double aprilTagBearing = CamBoard.GetAprilTag("bearing");
-        if (aprilTagBearing == 400) {return;}
+        if (aprilTagBearing == 400)
+        {
+            turret.set(0);
+            return;
+        }
 
         double bearingTicks = aprilTagBearing / 360 * TICKS_PER_REV;
         double turretPosition = turret.getCurrentPosition();
         double turretTargetPosition = turretPosition - (bearingTicks * TURRET_KP);
-
+        //Turret limits
         if (((turretPosition < -240 && turretTargetPosition < 0) ||
             (turretPosition > 450 && turretTargetPosition - turretPosition > 0))
         )
-        {turret.setTargetPosition(turret.getCurrentPosition());}
+        {
+            turret.setTargetPosition((int) turretPosition);
+            turret.set(0);
+        }
         else {turret.setTargetPosition((int) turretTargetPosition);}
 
         if (turret.atTargetPosition()) {turret.set(0.035);}
@@ -121,7 +145,6 @@ public class LaunchBoard
 
     public void AngleAdjusterMovement(double input) {adjusterAngle += input;}
     public void UpdateAngleAdjuster() {angleAdjuster.setPosition(adjusterAngle);}
-    public double getAdjusterAngle() {return adjusterAngle;}
 
     // ------ Intake state machine ------
 
@@ -136,7 +159,7 @@ public class LaunchBoard
     public void Intake() //Temporary until automatic detection
     {
         launchState = LaunchState.EATING;
-        adjusterAngle -= 0.75 * ballsShot;
+        adjusterAngle -= 0.065 * ballsShot;
         ballsShot = 0;
     }
     public void Rev() {launchState = LaunchState.FULL;} //Temporary until automatic detection
@@ -163,9 +186,9 @@ public class LaunchBoard
         {
             case EATING:
 
-                intake.setPower(0.78);
-                FlywheelMovement(TICKS_PER_REV * 15); //Low-power mode
-                stopper.setPosition(0.8);
+                intake.setPower(0.8);
+                FlywheelMovement(0); //Low-power mode
+                stopper.setPosition(0.75);
 
                 /*double distance = ballDistance.getDistance(DistanceUnit.CM);
 
@@ -201,13 +224,13 @@ public class LaunchBoard
 
             case SHOOTING:
 
-                stopper.setPosition(0.48);
+                stopper.setPosition(0.425);
                 if (stopperTimer.milliseconds() < 150) {return;}
 
                 if (rightFlywheel.getVelocity() + 25 < lastFlywheelSpeed && ballsShot < 3)
                 {
-                    angleAdjuster.setPosition(adjusterAngle + 0.075);
-                    adjusterAngle += 0.075;
+                    angleAdjuster.setPosition(adjusterAngle + 0.065);
+                    adjusterAngle += 0.065;
                     ballsShot++;
                 }
                 intake.setPower(0.9);
