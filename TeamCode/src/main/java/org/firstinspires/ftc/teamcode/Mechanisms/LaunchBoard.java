@@ -17,16 +17,24 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Configurable
 public class LaunchBoard
 {
-    private final double GOAL_HEIGHT = 42; //in; 38.19 - physical goal height
     private final double FLYWHEEL_RADIUS = 1.89; //in
     private final double TICKS_PER_REV = 28; //Every GoBilda 5202 series motor has 28 TPR
+    private final double LAUNCH_HEIGHT = 13;
+
+    public static double GOAL_HEIGHT = 42; //in; 38.19 - physical goal height
+    public static double GOAL_ANGLE = 35;
+
+    private final double MAX_LAUNCH_ANGLE = Math.toRadians(60);
+    private final double MIN_LAUNCH_ANGLE = Math.toRadians(30);
 
     public static double TURRET_KP = 15;
-    public static double FLYWHEEL_KP = 6.5;
+    public static double FLYWHEEL_KP = 5.5;
+    public static double FLYWHEEL_UNCONSTRAINTED_KP = 2;
 
     LimeLightBoard CamBoard = new LimeLightBoard();
     ElapsedTime stopperTimer = new ElapsedTime();
@@ -43,7 +51,9 @@ public class LaunchBoard
 
     private LaunchState launchState = LaunchState.IDLE;
 
+    private double distance = 0;
     private double launchAngle = 0;
+    private double smallestLaunchSpeed = 999999;
     private double flywheelSpeed = 0;
     private double ballsShot = 0;
     private double lastFlywheelSpeed = 0;
@@ -85,33 +95,118 @@ public class LaunchBoard
         return motor;
     }
 
-    public void IntakeMovement(double input) {intake.setPower(input);}
+    public void start() {CamBoard.start();}
+    public void stop() {CamBoard.stop();}
 
-    public void FlywheelMovement(double input)
+
+    enum FlywheelMode
     {
-        //Remove PID when slowing down because slowing down quickly is unnecessary
-        //and it drains battery, since motors brake instead of letting loose
-        if (input < rightFlywheel.getVelocity())
+        IDLE,
+        ADJUSTED,
+        FIXED
+    }
+
+    public void FlywheelMovement(FlywheelMode mode, double flywheelMultiplier)
+    {
+        //Multiply this by in/s to get TPS
+        double flywheelSpeed = FLYWHEEL_KP * TICKS_PER_REV / (2 * 3.1415 * FLYWHEEL_RADIUS);
+
+        switch (mode)
         {
-            leftFlywheel.setVeloCoefficients(0, 0, 0);
-            rightFlywheel.setVeloCoefficients(0, 0, 0);
-        }
-        else
-        {
-            leftFlywheel.setVeloCoefficients(3.25, 4.5, 0);
-            rightFlywheel.setVeloCoefficients(3.25, 4.5, 0);
+            // ------ Automatic launch angle and speed adjustment ------
+
+            case ADJUSTED:
+
+                leftFlywheel.setVeloCoefficients(3.25, 4.5, 0);
+                rightFlywheel.setVeloCoefficients(3.25, 4.5, 0);
+
+                double newDistance = CamBoard.GetAprilTag("range");
+                if (newDistance != 400) {distance = newDistance;}
+                List<Double> launchAngles = FindAllLaunchAngles(distance, GOAL_HEIGHT, LAUNCH_HEIGHT, GOAL_ANGLE);
+                StringBuilder anglesFound = new StringBuilder();
+
+                if (launchAngles.isEmpty()) return;
+
+                smallestLaunchSpeed = 999999;
+                for (double angle : launchAngles)
+                {
+                    anglesFound.append(String.format(Locale.US, "{%.3f}", Math.toDegrees(angle)));
+                    anglesFound.append("; ");
+
+                    double launchSpeed;
+                    if (angle < MIN_LAUNCH_ANGLE || angle > MAX_LAUNCH_ANGLE)
+                    {
+                        double minAngleSpeed = UnconstrainedLaunchSpeed(MIN_LAUNCH_ANGLE, distance, GOAL_HEIGHT, LAUNCH_HEIGHT);
+                        double maxAngleSpeed = UnconstrainedLaunchSpeed(MAX_LAUNCH_ANGLE, distance, GOAL_HEIGHT, LAUNCH_HEIGHT);
+
+                        if (minAngleSpeed < maxAngleSpeed)
+                        {
+                            angle = MIN_LAUNCH_ANGLE;
+                            launchSpeed = minAngleSpeed;
+                        } else
+                        {
+                            angle = MAX_LAUNCH_ANGLE;
+                            launchSpeed = maxAngleSpeed;
+                        }
+                    }
+                    else {launchSpeed = LaunchSpeed(angle, distance, GOAL_ANGLE);}
+
+                    if (launchSpeed < smallestLaunchSpeed)
+                    {
+                        smallestLaunchSpeed = launchSpeed;
+                        launchAngle = angle;
+                    }
+                }
+
+                //Clamp angle adjuster range
+                adjusterAngle =
+                        Range.scale(launchAngle, MIN_LAUNCH_ANGLE, MAX_LAUNCH_ANGLE, 0.125, 0.9)
+                        + 0.065 * ballsShot;
+                //Divide by 2*pi*radius to get RPS then multiply by TPR to get TPS (ticks per second)
+                flywheelSpeed *= smallestLaunchSpeed;
+
+                //Recoil to compensate for temporary flywheel speed loss caused by contact with balls
+                if (rightFlywheel.getVelocity() + 25 < lastFlywheelSpeed && ballsShot < 3)
+                {ballsShot++;}
+                intake.setPower(0.8);
+
+                lastFlywheelSpeed = rightFlywheel.getVelocity();
+
+                break;
+
+            case FIXED:
+
+                leftFlywheel.setVeloCoefficients(3.25, 4.5, 0);
+                rightFlywheel.setVeloCoefficients(3.25, 4.5, 0);
+
+                flywheelSpeed *= flywheelMultiplier;
+                break;
+
+            case IDLE:
+            default:
+
+                //Remove PID when slowing down because slowing down quickly is unnecessary
+                //and it drains battery, since motors brake instead of letting loose
+                leftFlywheel.setVeloCoefficients(0, 0, 0);
+                rightFlywheel.setVeloCoefficients(0, 0, 0);
+                flywheelSpeed = 0;
+                break;
         }
 
-        leftFlywheel.setVelocity(input);
-        rightFlywheel.setVelocity(input);
+        leftFlywheel.setVelocity(flywheelSpeed);
+        rightFlywheel.setVelocity(flywheelSpeed);
+        angleAdjuster.setPosition(adjusterAngle);
     }
+
+    public void FlywheelMovement(FlywheelMode mode) {FlywheelMovement(mode, 1);}
+
 
     public void TurretLockPosition(double input)
     {
         turret.setTargetPosition((int)input);
         if (turret.atTargetPosition())
         {
-            turret.setPositionCoefficient(0.3);
+            turret.setPositionCoefficient(0.175);
             turret.set(0.05);
         }
         else {turret.set(0.1);}
@@ -144,7 +239,11 @@ public class LaunchBoard
     }
 
     public void AngleAdjusterMovement(double input) {adjusterAngle += input;}
-    public void UpdateAngleAdjuster() {angleAdjuster.setPosition(adjusterAngle);}
+    public void UpdateAngleAdjuster() {}
+
+    public double getLaunchAngle() {return launchAngle;}
+    public double getTurretPosition() {return turret.getCurrentPosition();}
+
 
     // ------ Intake state machine ------
 
@@ -152,17 +251,17 @@ public class LaunchBoard
     {
         IDLE,
         EATING,
-        FULL,
+        REV,
         SHOOTING,
     }
 
-    public void Intake() //Temporary until automatic detection
+    public void Intake()
     {
         launchState = LaunchState.EATING;
-        adjusterAngle -= 0.065 * ballsShot;
+        //adjusterAngle -= 0.065 * ballsShot;
         ballsShot = 0;
     }
-    public void Rev() {launchState = LaunchState.FULL;} //Temporary until automatic detection
+    public void Rev() {launchState = LaunchState.REV;}
     public void Shoot()
     {
         launchState = LaunchState.SHOOTING;
@@ -170,15 +269,6 @@ public class LaunchBoard
     }
     public void Idle() {launchState = LaunchState.IDLE;}
 
-    public double getAprilTagDistance() {return CamBoard.GetAprilTag("range");}
-    public double getAprilTagBearing()
-    {
-        double bearingTicks = CamBoard.GetAprilTag("bearing") / 360 * TICKS_PER_REV;
-        return bearingTicks * TURRET_KP;
-    }
-    public double getLaunchAngle() {return launchAngle;}
-
-    public double getTurretPosition() {return turret.getCurrentPosition();}
 
     public void UpdateLaunch(boolean camAdjustment, double flywheelMultiplier)
     {
@@ -187,7 +277,7 @@ public class LaunchBoard
             case EATING:
 
                 intake.setPower(0.8);
-                FlywheelMovement(0); //Low-power mode
+                FlywheelMovement(FlywheelMode.IDLE);
                 stopper.setPosition(0.75);
 
                 /*double distance = ballDistance.getDistance(DistanceUnit.CM);
@@ -199,43 +289,21 @@ public class LaunchBoard
 
                 break;
 
-            case FULL:
+            case REV:
 
                 intake.setPower(0.05);
 
                 if (camAdjustment)
-                {
-                    double distance = CamBoard.GetAprilTag("range");
-
-                    if (distance != -1)
-                    {
-                        launchAngle = 0;
-                        flywheelSpeed = 0;
-                    }
-                    // 0.0873 rad = 5 deg, 0.611 rad = 35 deg
-                    double adjusterAngle = 0.8 - Range.scale(launchAngle, 0.0873, 0.611, 0, 0.8);
-                    angleAdjuster.setPosition(adjusterAngle);
-                    //Divide by 2*pi*radius to get RPS then multiply by TPR to get TPS (ticks per second)
-                    FlywheelMovement(TICKS_PER_REV * flywheelSpeed / (2 * 3.1415 * FLYWHEEL_RADIUS));
-                }
-                else {FlywheelMovement(flywheelMultiplier * TICKS_PER_REV * 100);}
+                {FlywheelMovement(FlywheelMode.ADJUSTED);}
+                else {FlywheelMovement(FlywheelMode.FIXED, flywheelMultiplier);}
 
                 break;
 
             case SHOOTING:
 
                 stopper.setPosition(0.425);
-                if (stopperTimer.milliseconds() < 150) {return;}
-
-                if (rightFlywheel.getVelocity() + 25 < lastFlywheelSpeed && ballsShot < 3)
-                {
-                    angleAdjuster.setPosition(adjusterAngle + 0.065);
-                    adjusterAngle += 0.065;
-                    ballsShot++;
-                }
-                intake.setPower(0.9);
-
-                lastFlywheelSpeed = rightFlywheel.getVelocity();
+                if (stopperTimer.milliseconds() < 150) return;
+                intake.setPower(0.8);
 
                 break;
 
@@ -243,46 +311,59 @@ public class LaunchBoard
             default:
 
                 intake.setPower(0);
-                FlywheelMovement(0);
+                FlywheelMovement(FlywheelMode.IDLE);
                 break;
         }
     }
 
     // ------ Functions that help with calculating launch angle and speed ------
 
-    private double LaunchSpeed(double launchAngle, double x, double alpha)
+    private double LaunchSpeed(double launchAngle, double x, double goalAngle)
     {
         //gravitational acceleration in in/s^2 = 386.09
         return Math.sqrt(
-                (386.09 * x * Math.cos(launchAngle) * Math.cos(alpha)) /
-                        Math.sin(launchAngle + alpha)
+                (386.09 * x * Math.cos(launchAngle) * Math.cos(goalAngle)) /
+                        Math.sin(launchAngle + goalAngle)
         );
+    }
+
+    //For angles outside of the bounds of the angle adjuster, we compensate with speed
+    private double UnconstrainedLaunchSpeed(double launchAngle, double x, double y, double h)
+    {
+        double g = 386.09;
+
+        double denom = 2.0 * Math.pow(Math.cos(launchAngle), 2) *
+                (x * Math.tan(launchAngle) - (y - h));
+
+        if (denom <= 0) return 999999; //Impossible at this angle
+
+        return Math.sqrt(g * x * x / denom) * FLYWHEEL_UNCONSTRAINTED_KP;
     }
 
     //Separate function into sections and find sections in which function crosses 0
     //to find all roots, because function below only converges to one of potential two solutions
     List<Double> FindAllLaunchAngles(
-            double x, double y, double h, double alpha
+            double x, double y, double h, double goalAngle
     ) {
         List<Double> roots = new ArrayList<>();
 
-        double start = Math.toRadians(50.0);
-        double end = Math.toRadians(85.0);
+        double start = Math.toRadians(5);
+        double end = Math.toRadians(85);
         int sections = 100;
 
         double section = (end - start) / sections;
 
         double sectionStart = start;
-        double fSectionStart = LaunchAngleFunction(sectionStart, x, y, h, alpha);
+        double fSectionStart = LaunchAngleFunction(sectionStart, x, y, h, goalAngle);
 
         for (int i = 1; i <= sections; i++)
         {
             double sectionEnd = start + i * section;
-            double fSectionEnd = LaunchAngleFunction(sectionEnd, x, y, h, alpha);
+            double fSectionEnd = LaunchAngleFunction(sectionEnd, x, y, h, goalAngle);
 
             if (fSectionStart * fSectionEnd <= 0) //Function crosses 0, so a root is there
             {
-                Double root = SearchForLaunchAngle(x, y, h, alpha, sectionStart, sectionEnd);
+                Double root = SearchForLaunchAngle(x, y, h, goalAngle, sectionStart, sectionEnd);
                 if (root != null) {roots.add(root);}
             }
 
@@ -296,11 +377,11 @@ public class LaunchBoard
     //Bisection, if one angle overshoots and another undershoots then the
     //correct angle is somewhere in the middle
     private Double SearchForLaunchAngle(
-            double x, double y, double h, double alpha,
+            double x, double y, double h, double goalAngle,
             double launchAngleMin, double launchAngleMax
     ) {
-        double fLaunchAngleMin = LaunchAngleFunction(launchAngleMin, x, y, h, alpha);
-        double fLaunchAngleMax = LaunchAngleFunction(launchAngleMax, x, y, h, alpha);
+        double fLaunchAngleMin = LaunchAngleFunction(launchAngleMin, x, y, h, goalAngle);
+        double fLaunchAngleMax = LaunchAngleFunction(launchAngleMax, x, y, h, goalAngle);
 
         //Same sign, so top assumption is false, so there's no solution
         if (fLaunchAngleMin * fLaunchAngleMax > 0) {return null;}
@@ -308,7 +389,7 @@ public class LaunchBoard
         for (int i = 0; i < 50; i++) //~1e-15 precision
         {
             double launchAngleMid = 0.5 * (launchAngleMin + launchAngleMax);
-            double fLaunchAngleMid = LaunchAngleFunction(launchAngleMid, x, y, h, alpha);
+            double fLaunchAngleMid = LaunchAngleFunction(launchAngleMid, x, y, h, goalAngle);
 
             //Opposite signs, so correct angle is in between
             if (fLaunchAngleMin * fLaunchAngleMid <= 0)
@@ -326,10 +407,10 @@ public class LaunchBoard
 
     //The closer the value this returns is to 0, the closer to the correct launch angle
     //(check technical book for how we got to this equation)
-    private double LaunchAngleFunction(double launchAngle, double x, double y, double h, double alpha)
+    private double LaunchAngleFunction(double launchAngle, double x, double y, double h, double goalAngle)
     {
         return x * Math.tan(launchAngle)
-                - (x * Math.sin(launchAngle + alpha)) / (2.0 * Math.cos(launchAngle) * Math.cos(alpha))
+                - (x * Math.sin(launchAngle + goalAngle)) / (2.0 * Math.cos(launchAngle) * Math.cos(goalAngle))
                 - (y - h);
     }
 

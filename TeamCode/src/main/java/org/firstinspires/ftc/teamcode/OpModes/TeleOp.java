@@ -14,7 +14,6 @@ public class TeleOp extends OpMode {
 
     OmnimovementBoard OmniBoard = new OmnimovementBoard();
     LaunchBoard LaunchBoard = new LaunchBoard();
-    CameraBoard CamBoard = new CameraBoard();
 
     //Flags for buttons
     private boolean buttonHeld = false;
@@ -36,32 +35,45 @@ public class TeleOp extends OpMode {
     private double flywheelMultiplier = 0.65;
     private boolean camAdjustment = false;
     private boolean redAlliance = false;
+    private boolean allianceConfirmed = false;
 
     @Override
     public void init()
     {
         OmniBoard.init(hardwareMap);
-
         telemetry.addData("BOOTED:", "Welcome to AstraDynamiX Technologies!");
     }
 
     @Override
     public void init_loop()
     {
-        if (gamepad1.a && !aHeld)
+        if (allianceConfirmed)
+        {telemetry.addData("CONFIRMED", (redAlliance) ? "red" : "blue");}
+        else
         {
-            aHeld = true;
-            redAlliance = !redAlliance;
-        }
-        if(!gamepad1.a) {aHeld = false;}
+            telemetry.addData("", "A - change alliance, B - confirm");
 
-        telemetry.addData("ALLIANCE", (redAlliance) ? "red" : "blue");
+            if (gamepad1.a && !aHeld)
+            {
+                aHeld = true;
+                redAlliance = !redAlliance;
+            }
+            if(!gamepad1.a) {aHeld = false;}
+
+            telemetry.addData("ALLIANCE", (redAlliance) ? "red" : "blue");
+
+            if (gamepad1.b)
+            {
+                allianceConfirmed = true;
+                LaunchBoard.init(hardwareMap, redAlliance);
+            }
+        }
     }
 
     @Override
     public void start()
     {
-        LaunchBoard.init(hardwareMap, redAlliance);
+        LaunchBoard.start();
     }
 
     @Override
@@ -137,24 +149,33 @@ public class TeleOp extends OpMode {
         //Functions that get called every loop with no conditions
         LaunchBoard.UpdateLaunch(camAdjustment, flywheelMultiplier);
         LaunchBoard.UpdateAngleAdjuster();
-        if (camAdjustment) {LaunchBoard.TurretMovement();}
+        if (camAdjustment)
+        {
+            LaunchBoard.UpdateAngleAdjuster();
+            LaunchBoard.TurretMovement();
+        }
         else {LaunchBoard.TurretLockPosition(0);}
 
         // ------ Telemetry ------
         telemetry.addData("CAM ADJUSTMENT", camAdjustment);
         if (camAdjustment)
         {
-            telemetry.addData("APRIL TAG DISTANCE", LaunchBoard.getAprilTagDistance());
-            telemetry.addData("APRIL TAG BEARING", LaunchBoard.getAprilTagBearing());
-            telemetry.addData("LAUNCH ANGLE", LaunchBoard.getLaunchAngle());
-            telemetry.addData("", "");
-            telemetry.addData("TURRET POSITION", LaunchBoard.getTurretPosition());
+
+            //telemetry.addData("", "");
+            //telemetry.addData("TURRET POSITION", LaunchBoard.getTurretPosition());
         }
         else
         {
             telemetry.addData("FLYWHEEL MULTIPLIER", flywheelMultiplier);
+            telemetry.addData("LAUNCH ANGLE", LaunchBoard.getLaunchAngle());
         }
         //telemetry.addData("IMU:", OmniBoard.GetHeading() / 3.1415 + "π");
+    }
+
+    @Override
+    public void stop()
+    {
+        LaunchBoard.stop();
     }
 
     // ------ state machines ------

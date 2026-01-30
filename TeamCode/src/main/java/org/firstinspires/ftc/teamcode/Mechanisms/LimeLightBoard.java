@@ -18,7 +18,20 @@ public class LimeLightBoard
     {
         limelight = hwMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(id);
+    }
+
+    public void start()
+    {
         limelight.start();
+        //Aww 200$ camera can't handle a pipeline switch without taking forever?
+        /*try {Thread.sleep(250);}
+        catch (InterruptedException ignored) {}*/
+    }
+
+    public void stop()
+    {
+        limelight.stop();
+        limelight.close();
     }
 
     public double GetAprilTag(String dimension)
@@ -39,7 +52,7 @@ public class LimeLightBoard
 
                 case "bearing":
 
-                    distance = limelight.getLatestResult().getTx() - BEARING_OFFSET;
+                    distance = detection.getTx() - BEARING_OFFSET;
                     break;
             }
         }
@@ -56,7 +69,7 @@ public class LimeLightBoard
         {
             double ta = detection.getTa();
             info[0] = (CALIBRATION_CONSTANT / sqrt(ta));
-            info[1] = limelight.getLatestResult().getTx() - BEARING_OFFSET;
+            info[1] = detection.getTx() - BEARING_OFFSET;
         }
         return info;
     }

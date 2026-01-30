@@ -9,7 +9,6 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.Range;
 import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
-import org.firstinspires.ftc.teamcode.Mechanisms.LaunchBoard;
 import org.firstinspires.ftc.teamcode.Mechanisms.LimeLightBoard;
 
 import java.util.ArrayList;
@@ -18,18 +17,19 @@ import java.util.Locale;
 
 @Configurable
 @TeleOp(group = "tests")
-public class MathTest extends OpMode
+public class AutomaticAdjustmentTest extends OpMode
 {
-    private final double GOAL_HEIGHT = 39; //in; 38.19 - physical goal height
+    public static double GOAL_HEIGHT = 42; //in; 38.19 - physical goal height
     private final double LAUNCH_HEIGHT = 13;
     public static double GOAL_ANGLE = 35;
 
     private final double TICKS_PER_REV = 28; //Every GoBilda 5202 series motor has 28 TPR
     private final double FLYWHEEL_RADIUS = 1.89; //in
     public static double FLYWHEEL_KP = 5.5;
+    public static double FLYWHEEL_UNCONSTRAINTED_KP = 1.8;
 
-    private final double MAX_LAUNCH_ANGLE = 60;
-    private final double MIN_LAUNCH_ANGLE = 30;
+    private final double MAX_LAUNCH_ANGLE = Math.toRadians(60);
+    private final double MIN_LAUNCH_ANGLE = Math.toRadians(30);
 
     LimeLightBoard CamBoard = new LimeLightBoard();
 
@@ -74,6 +74,9 @@ public class MathTest extends OpMode
     }
 
     @Override
+    public void start() {CamBoard.start();}
+
+    @Override
     public void loop()
     {
         double newDistance = CamBoard.GetAprilTag("range");
@@ -90,18 +93,25 @@ public class MathTest extends OpMode
             anglesFound.append("; ");
 
             double launchSpeed;
-            if (angle < Math.toRadians(MIN_LAUNCH_ANGLE))
+            if (angle < MIN_LAUNCH_ANGLE || angle > MAX_LAUNCH_ANGLE)
             {
-                launchSpeed = UnconstrainedLaunchSpeed(MIN_LAUNCH_ANGLE, distance, GOAL_HEIGHT, LAUNCH_HEIGHT);
-                angle = Math.toRadians(MIN_LAUNCH_ANGLE);
-            }
-            else if (angle > Math.toRadians(MAX_LAUNCH_ANGLE))
-            {
-                launchSpeed = UnconstrainedLaunchSpeed(MAX_LAUNCH_ANGLE, distance, GOAL_HEIGHT, LAUNCH_HEIGHT);
-                angle = Math.toRadians(MAX_LAUNCH_ANGLE);
+                double minAngleSpeed = UnconstrainedLaunchSpeed(MIN_LAUNCH_ANGLE, distance, GOAL_HEIGHT, LAUNCH_HEIGHT);
+                double maxAngleSpeed = UnconstrainedLaunchSpeed(MAX_LAUNCH_ANGLE, distance, GOAL_HEIGHT, LAUNCH_HEIGHT);
+
+                if (minAngleSpeed < maxAngleSpeed)
+                {
+                    angle = MIN_LAUNCH_ANGLE;
+                    launchSpeed = minAngleSpeed;
+                }
+                else
+                {
+                    angle = MAX_LAUNCH_ANGLE - Math.toRadians(10); //Hardware issues call for hardcoded magic
+                    launchSpeed = maxAngleSpeed;
+                }
             }
             else
             {launchSpeed = LaunchSpeed(angle, distance, GOAL_ANGLE);}
+
 
             if (launchSpeed < smallestLaunchSpeed)
             {
@@ -117,7 +127,7 @@ public class MathTest extends OpMode
         {
             //Clamp angle adjuster range
             double adjusterAngle =
-                    Range.scale(launchAngle, Math.toRadians(MIN_LAUNCH_ANGLE), Math.toRadians(MAX_LAUNCH_ANGLE), 0.125, 0.9);
+                    Range.scale(launchAngle, MIN_LAUNCH_ANGLE, MAX_LAUNCH_ANGLE, 0.125, 0.9);
             angleAdjuster.setPosition(adjusterAngle);
 
             //Divide by 2*pi*radius to get RPS then multiply by TPR to get TPS (ticks per second)
@@ -126,7 +136,7 @@ public class MathTest extends OpMode
             rightFlywheel.setVelocity(flywheelInput);
             telemetry.addData("FLYWHEEL SPEED", flywheelInput);
 
-            intake.setPower(0.7);
+            intake.setPower(0.8);
         }
         else
         {
@@ -142,6 +152,10 @@ public class MathTest extends OpMode
         }
         if (!gamepad1.a) {aHeld = false;}
     }
+
+    @Override
+    public void stop() {CamBoard.stop();}
+
 
     private double LaunchSpeed(double launchAngle, double x, double goalAngle)
     {
@@ -162,7 +176,7 @@ public class MathTest extends OpMode
 
         if (denom <= 0) return 999999; //Impossible at this angle
 
-        return Math.sqrt(g * x * x / denom);
+        return Math.sqrt(g * x * x / denom) * FLYWHEEL_UNCONSTRAINTED_KP;
     }
 
     //Separate function into sections and find sections in which function crosses 0

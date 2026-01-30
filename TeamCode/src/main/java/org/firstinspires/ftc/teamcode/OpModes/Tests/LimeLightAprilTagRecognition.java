@@ -48,7 +48,13 @@ public class LimeLightAprilTagRecognition extends OpMode
         telemetry.addData("Distance", "%.1f\"", distanceInches);
 
         double bearing = limelight.getLatestResult().getTx() - BEARING_OFFSET;
-        telemetry.addData("Raw tx", "%.2f", bearing);
+        telemetry.addData("Bearing", "%.2f", bearing);
+    }
 
+    @Override
+    public void stop()
+    {
+        limelight.stop();
+        limelight.close();
     }
 }
