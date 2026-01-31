@@ -27,7 +27,7 @@ public class AutomaticAdjustmentTest extends OpMode
     private final double FLYWHEEL_RADIUS = 1.89; //in
     public static double FLYWHEEL_KP = 5.5;
     public static double FLYWHEEL_UNCONSTRAINTED_KP = 1.8;
-    private static double UNGHI_DE_CACAT = 10;
+    private static double FAR_ANGLE = 10;
 
     private final double MAX_LAUNCH_ANGLE = Math.toRadians(60);
     private final double MIN_LAUNCH_ANGLE = Math.toRadians(30);
@@ -106,7 +106,7 @@ public class AutomaticAdjustmentTest extends OpMode
                 }
                 else
                 {
-                    angle = MAX_LAUNCH_ANGLE - Math.toRadians(UNGHI_DE_CACAT); //Hardware issues call for hardcoded magic
+                    angle = MAX_LAUNCH_ANGLE - Math.toRadians(FAR_ANGLE); //Hardware issues call for hardcoded magic
                     launchSpeed = maxAngleSpeed;
                 }
             }

@@ -35,7 +35,7 @@ public class TeleOp extends OpMode {
     private boolean allianceConfirmed = false;
 
     private int launchState = 0;
-    private double flywheelMultiplier = 200;
+    private double flywheelMultiplier = 300;
     private boolean camAdjustment = true;
     private boolean outtake = false;
 
@@ -135,14 +135,14 @@ public class TeleOp extends OpMode {
         if (gamepad1.dpad_up && !upHeld)
         {
             upHeld = true;
-            flywheelMultiplier += 10;
+            flywheelMultiplier += 25;
         }
         if (!gamepad1.dpad_up) {upHeld = false;}
 
         if (gamepad1.dpad_down && !downHeld)
         {
             downHeld = true;
-            flywheelMultiplier -= 10;
+            flywheelMultiplier -= 25;
         }
         if (!gamepad1.dpad_down) {downHeld = false;}
 
