@@ -32,8 +32,8 @@ public class AutonomousBlue extends OpMode
     //Asta e ala de la far
     private Pose startFar = new Pose(56,8,Math.toRadians(90));
     private Pose shootFar = new Pose(57.72972972972973,13.513513513513509,Math.toRadians(110));
-    private Pose intake1StartFar = new Pose(55.864864864864856, 35.24324324324324, Math.toRadians(180));
-    private Pose intake1EndFar = new Pose(20.540540540540533, 35.24324324324324, Math.toRadians(180));
+    private Pose intake1StartFar = new Pose(55.864864864864856, 37.24324324324324, Math.toRadians(180));
+    private Pose intake1EndFar = new Pose(20.540540540540533, 37.24324324324324, Math.toRadians(180));
     private Pose intake2StartFar = new Pose(20.91891891891892,44.837837837837846,Math.toRadians(-95));
     private Pose intake2EndFar = new Pose(18,17.45945945945946,Math.toRadians(-95));
     private Pose endFar = new Pose(38.108108108108105,26.29729729729731,Math.toRadians(-150));

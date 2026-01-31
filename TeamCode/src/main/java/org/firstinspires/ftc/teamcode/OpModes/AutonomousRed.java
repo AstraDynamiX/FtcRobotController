@@ -32,8 +32,8 @@ public class AutonomousRed extends OpMode
     //Asta e ala de la far
     private Pose startFar = new Pose(88,8,Math.toRadians(90));
     private Pose shootFar = new Pose(86.48648648648648,18.05405405405405,Math.toRadians(70));
-    private Pose intake1StartFar = new Pose(93.13513513513514, 35.24324324324324, Math.toRadians(0));
-    private Pose intake1EndFar = new Pose(126.45945945945947, 35.24324324324324, Math.toRadians(0));
+    private Pose intake1StartFar = new Pose(93.13513513513514, 37.24324324324324, Math.toRadians(0));
+    private Pose intake1EndFar = new Pose(126.45945945945947, 37.24324324324324, Math.toRadians(0));
     private Pose intake2StartFar = new Pose(133.75675675675677,38.51351351351348, Math.toRadians(0));
     private Pose intake2EndFar = new Pose(135.43243243243242,8.756756756756735, Math.toRadians(0));
     private Pose endFar = new Pose(38.108108108108105,26.29729729729731,Math.toRadians(275));
@@ -41,10 +41,10 @@ public class AutonomousRed extends OpMode
     //Asta e ala de la close
     private Pose startClose = new Pose(118.91683145471521,131.24159529402453,Math.toRadians(36.19999999999999));
     private Pose shootClose = new Pose(88.21412875201253,87.34970340213259,Math.toRadians(45));
-    private Pose intake1StartClose = new Pose(91.70270329729729, 84.27027027027026, Math.toRadians(360));
-    private Pose intake1EndClose = new Pose(126.70061523849898, 84.27027027027029, Math.toRadians(360));
-    private Pose intake2StartClose = new Pose(98.91891891891892,59.7027027027027,Math.toRadians(360));
-    private Pose intake2EndClose = new Pose(126.29729729729729,59.5945945945946,Math.toRadians(180));
+    private Pose intake1StartClose = new Pose(91.70270329729729, 89.77027027027026, Math.toRadians(360));
+    private Pose intake1EndClose = new Pose(126.70061523849898, 89.77027027027029, Math.toRadians(360));
+    private Pose intake2StartClose = new Pose(98.91891891891892,65.7027027027027,Math.toRadians(360));
+    private Pose intake2EndClose = new Pose(126.29729729729729,65.5945945945946,Math.toRadians(360));
     private Pose endClose = new Pose(112.05405405405405,67.72972972972973,Math.toRadians(250));
 
 
@@ -60,6 +60,7 @@ public class AutonomousRed extends OpMode
     boolean closeTrajectory = false;
     boolean xHeld = false;
     boolean confirmed = false;
+    boolean camAdjustment = true;
 
     PathChain path;
     double timerGoal = 0;
@@ -123,8 +124,15 @@ public class AutonomousRed extends OpMode
     {
         follower.update();
         StatePathUpdate();
-        LaunchBoard.UpdateLaunch(false, 1);
-        LaunchBoard.TurretLockPosition(0);
+        if(camAdjustment) {
+            LaunchBoard.UpdateLaunch(true, 1);
+            LaunchBoard.TurretLockPosition(0);
+        }
+        else
+        {
+            LaunchBoard.TurretLockPosition(0);
+            LaunchBoard.UpdateLaunch(false,1);
+        }
 
         if (opModeTimer.seconds() > 30) {requestOpModeStop();}
     }
@@ -150,7 +158,7 @@ public class AutonomousRed extends OpMode
             AddPath(shootClose, intake1StartClose, "shoot");
             AddPath(intake1StartClose, intake1EndClose, "intake");
             AddPath(intake1EndClose, shootClose, "rev");
-            AddPath(shootClose, intake2StartClose, "shoot");
+            AddPath(shootClose, intake2StartClose, "shootNoCam");
             AddPath(intake2StartClose, intake2EndClose, "intake");
             AddPath(intake2EndClose, shootClose, "rev");
             AddPath(shootClose, endClose, "shoot");
@@ -204,6 +212,7 @@ public class AutonomousRed extends OpMode
             {
                 case "intake":
                     follower.setMaxPower(0.5);
+                    camAdjustment = false;
                     waiting = false;
                     LaunchBoard.Intake();
                     break;
@@ -211,22 +220,35 @@ public class AutonomousRed extends OpMode
 
                 case "rev":
                     follower.setMaxPower(1);
+                    camAdjustment = true;
                     waiting = false;
                     LaunchBoard.Rev();
                     break;
 
 
+
+
                 case "revSlow":
                     follower.setMaxPower(0.8);
+                    camAdjustment = true;
                     waiting = false;
                     LaunchBoard.Rev();
                     break;
 
                 case "shoot":
                     follower.setMaxPower(1);
+                    camAdjustment = true;
                     timerGoal = 2000; timer.reset();
                     LaunchBoard.Shoot();
                     break;
+
+                case "shootNoCam":
+                    follower.setMaxPower(1);
+                    camAdjustment = false;
+                    timerGoal = 2000; timer.reset();
+                    LaunchBoard.Shoot();
+                    break;
+
 
                 case "":
                 default:
