@@ -27,7 +27,7 @@ public class LaunchBoard
     private final double LAUNCH_HEIGHT = 13;
 
     public static double GOAL_HEIGHT = 42; //in; 38.19 - physical goal height
-    public static double GOAL_ANGLE = 35;
+    private final double GOAL_ANGLE = Math.toRadians(35);
 
     private final double MAX_LAUNCH_ANGLE = Math.toRadians(60);
     private final double MIN_LAUNCH_ANGLE = Math.toRadians(30);
@@ -53,8 +53,6 @@ public class LaunchBoard
 
     private double distance = 0;
     private double launchAngle = 0;
-    private double smallestLaunchSpeed = 999999;
-    private double flywheelSpeed = 0;
     private double ballsShot = 0;
     private double lastFlywheelSpeed = 0;
     private double adjusterAngle = 0.35;
@@ -80,6 +78,8 @@ public class LaunchBoard
         //angleAdjuster = new ServoEx(hwMap, "angleAdjuster", 250, AngleUnit.DEGREES);
         stopper = hwMap.get(Servo.class, "stopper");
         angleAdjuster = hwMap.get(Servo.class, "angleAdjuster");
+
+        //GOAL_ANGLE = Math.toRadians(GOAL_ANGLE);
     }
 
     private MotorEx initMotor(
@@ -106,7 +106,7 @@ public class LaunchBoard
         FIXED
     }
 
-    public void FlywheelMovement(FlywheelMode mode, double flywheelMultiplier)
+    public void LaunchAdjustment(FlywheelMode mode, double flywheelMultiplier)
     {
         //Multiply this by in/s to get TPS
         double flywheelSpeed = FLYWHEEL_KP * TICKS_PER_REV / (2 * 3.1415 * FLYWHEEL_RADIUS);
@@ -127,7 +127,7 @@ public class LaunchBoard
 
                 if (launchAngles.isEmpty()) return;
 
-                smallestLaunchSpeed = 999999;
+                double smallestLaunchSpeed = 999999;
                 for (double angle : launchAngles)
                 {
                     anglesFound.append(String.format(Locale.US, "{%.3f}", Math.toDegrees(angle)));
@@ -145,7 +145,7 @@ public class LaunchBoard
                             launchSpeed = minAngleSpeed;
                         } else
                         {
-                            angle = MAX_LAUNCH_ANGLE;
+                            angle = MAX_LAUNCH_ANGLE + Math.toRadians(15);
                             launchSpeed = maxAngleSpeed;
                         }
                     }
@@ -158,17 +158,16 @@ public class LaunchBoard
                     }
                 }
 
+                //Recoil to compensate for temporary flywheel speed loss caused by contact with balls
+                if (rightFlywheel.getVelocity() + 25 < lastFlywheelSpeed && ballsShot < 3)
+                {ballsShot++;}
+
                 //Clamp angle adjuster range
                 adjusterAngle =
                         Range.scale(launchAngle, MIN_LAUNCH_ANGLE, MAX_LAUNCH_ANGLE, 0.125, 0.9)
                         + 0.065 * ballsShot;
                 //Divide by 2*pi*radius to get RPS then multiply by TPR to get TPS (ticks per second)
                 flywheelSpeed *= smallestLaunchSpeed;
-
-                //Recoil to compensate for temporary flywheel speed loss caused by contact with balls
-                if (rightFlywheel.getVelocity() + 25 < lastFlywheelSpeed && ballsShot < 3)
-                {ballsShot++;}
-                intake.setPower(0.8);
 
                 lastFlywheelSpeed = rightFlywheel.getVelocity();
 
@@ -179,7 +178,7 @@ public class LaunchBoard
                 leftFlywheel.setVeloCoefficients(3.25, 4.5, 0);
                 rightFlywheel.setVeloCoefficients(3.25, 4.5, 0);
 
-                flywheelSpeed *= flywheelMultiplier;
+                flywheelSpeed = flywheelMultiplier;
                 break;
 
             case IDLE:
@@ -198,7 +197,7 @@ public class LaunchBoard
         angleAdjuster.setPosition(adjusterAngle);
     }
 
-    public void FlywheelMovement(FlywheelMode mode) {FlywheelMovement(mode, 1);}
+    public void LaunchAdjustment(FlywheelMode mode) {LaunchAdjustment(mode, 1);}
 
 
     public void TurretLockPosition(double input)
@@ -239,34 +238,38 @@ public class LaunchBoard
     }
 
     public void AngleAdjusterMovement(double input) {adjusterAngle += input;}
-    public void UpdateAngleAdjuster() {}
 
     public double getLaunchAngle() {return launchAngle;}
     public double getTurretPosition() {return turret.getCurrentPosition();}
-
+    public double getFlywheelSpeed() {return rightFlywheel.getVelocity();}
 
     // ------ Intake state machine ------
 
     enum LaunchState
     {
         IDLE,
-        EATING,
+        INTAKE,
+        OUTTAKE,
         REV,
-        SHOOTING,
+        SHOOT,
     }
 
     public void Intake()
     {
-        launchState = LaunchState.EATING;
-        //adjusterAngle -= 0.065 * ballsShot;
+        launchState = LaunchState.INTAKE;
         ballsShot = 0;
     }
+
+    public void Outtake() {launchState = launchState.OUTTAKE;}
+
     public void Rev() {launchState = LaunchState.REV;}
+
     public void Shoot()
     {
-        launchState = LaunchState.SHOOTING;
+        launchState = LaunchState.SHOOT;
         stopperTimer.reset();
     }
+
     public void Idle() {launchState = LaunchState.IDLE;}
 
 
@@ -274,10 +277,10 @@ public class LaunchBoard
     {
         switch (launchState)
         {
-            case EATING:
+            case INTAKE:
 
                 intake.setPower(0.8);
-                FlywheelMovement(FlywheelMode.IDLE);
+                LaunchAdjustment(FlywheelMode.IDLE);
                 stopper.setPosition(0.75);
 
                 /*double distance = ballDistance.getDistance(DistanceUnit.CM);
@@ -289,21 +292,29 @@ public class LaunchBoard
 
                 break;
 
+            case OUTTAKE:
+
+                intake.setPower(-0.8);
+                LaunchAdjustment(FlywheelMode.IDLE);
+                stopper.setPosition(0.75);
+
+                break;
+
             case REV:
 
                 intake.setPower(0.05);
 
                 if (camAdjustment)
-                {FlywheelMovement(FlywheelMode.ADJUSTED);}
-                else {FlywheelMovement(FlywheelMode.FIXED, flywheelMultiplier);}
+                {LaunchAdjustment(FlywheelMode.ADJUSTED);}
+                else {LaunchAdjustment(FlywheelMode.FIXED, flywheelMultiplier);}
 
                 break;
 
-            case SHOOTING:
+            case SHOOT:
 
                 stopper.setPosition(0.425);
                 if (stopperTimer.milliseconds() < 150) return;
-                intake.setPower(0.8);
+                intake.setPower(0.65);
 
                 break;
 
@@ -311,7 +322,7 @@ public class LaunchBoard
             default:
 
                 intake.setPower(0);
-                FlywheelMovement(FlywheelMode.IDLE);
+                LaunchAdjustment(FlywheelMode.IDLE);
                 break;
         }
     }

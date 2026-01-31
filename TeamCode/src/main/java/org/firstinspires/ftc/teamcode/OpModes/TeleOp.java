@@ -30,12 +30,15 @@ public class TeleOp extends OpMode {
     private boolean options1Held = false;
     private boolean xHeld = false;
     private boolean yHeld = false;
-
-    private int launchState = 0;
-    private double flywheelMultiplier = 0.65;
-    private boolean camAdjustment = false;
+    //Init loop booleans
     private boolean redAlliance = false;
     private boolean allianceConfirmed = false;
+
+    private int launchState = 0;
+    private double flywheelMultiplier = 200;
+    private boolean camAdjustment = true;
+    private boolean outtake = false;
+
 
     @Override
     public void init()
@@ -108,6 +111,17 @@ public class TeleOp extends OpMode {
         }
         if(!gamepad1.left_bumper) {leftBumperHeld = false;}
 
+        if(gamepad1.x)
+        {
+            outtake = true;
+            LaunchBoard.Outtake();
+        }
+        if (!gamepad1.x && outtake)
+        {
+            outtake = false;
+            LaunchBoard.Intake();
+        }
+
         if (gamepad1.right_bumper && !rightBumperHeld)
         {
             rightBumperHeld = true;
@@ -121,14 +135,14 @@ public class TeleOp extends OpMode {
         if (gamepad1.dpad_up && !upHeld)
         {
             upHeld = true;
-            flywheelMultiplier += 0.05;
+            flywheelMultiplier += 10;
         }
         if (!gamepad1.dpad_up) {upHeld = false;}
 
         if (gamepad1.dpad_down && !downHeld)
         {
             downHeld = true;
-            flywheelMultiplier -= 0.05;
+            flywheelMultiplier -= 10;
         }
         if (!gamepad1.dpad_down) {downHeld = false;}
 
@@ -148,28 +162,18 @@ public class TeleOp extends OpMode {
 
         //Functions that get called every loop with no conditions
         LaunchBoard.UpdateLaunch(camAdjustment, flywheelMultiplier);
-        LaunchBoard.UpdateAngleAdjuster();
         if (camAdjustment)
-        {
-            LaunchBoard.UpdateAngleAdjuster();
-            LaunchBoard.TurretMovement();
-        }
-        else {LaunchBoard.TurretLockPosition(0);}
+        {LaunchBoard.TurretMovement();}
+        else
+        {LaunchBoard.TurretLockPosition(0);}
 
         // ------ Telemetry ------
         telemetry.addData("CAM ADJUSTMENT", camAdjustment);
-        if (camAdjustment)
-        {
+        telemetry.addData("LAUNCH ANGLE", LaunchBoard.getLaunchAngle());
+        telemetry.addData("LAUNCH SPEED", LaunchBoard.getFlywheelSpeed());
 
-            //telemetry.addData("", "");
-            //telemetry.addData("TURRET POSITION", LaunchBoard.getTurretPosition());
-        }
-        else
-        {
-            telemetry.addData("FLYWHEEL MULTIPLIER", flywheelMultiplier);
-            telemetry.addData("LAUNCH ANGLE", LaunchBoard.getLaunchAngle());
-        }
-        //telemetry.addData("IMU:", OmniBoard.GetHeading() / 3.1415 + "π");
+        if (!camAdjustment)
+        {telemetry.addData("FLYWHEEL MULTIPLIER", flywheelMultiplier);}
     }
 
     @Override
