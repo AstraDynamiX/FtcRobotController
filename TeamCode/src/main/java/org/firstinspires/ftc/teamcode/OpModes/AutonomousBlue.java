@@ -12,14 +12,13 @@ import org.firstinspires.ftc.teamcode.Mechanisms.OmnimovementBoard;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-@com.qualcomm.robotcore.eventloop.opmode.Autonomous(name = "Autonomous_DECODE")
-public class Autonomous extends OpMode
+@com.qualcomm.robotcore.eventloop.opmode.Autonomous(name = "Autonomous_DECODE_BLUE")
+public class AutonomousBlue extends OpMode
 {
     OmnimovementBoard OmniBoard = new OmnimovementBoard();
     LaunchBoard LaunchBoard = new LaunchBoard();
@@ -84,21 +83,12 @@ public class Autonomous extends OpMode
     {
         if (confirmed)
         {
-            telemetry.addData("CONFIRMED", (redAlliance) ? "red" : "blue");
             telemetry.addData("CONFIRMED", (closeTrajectory) ? "close" : "far");
         }
         else
         {
-            telemetry.addData("", "O - change alliance, [] - change trajectory, X - confirm");
+            telemetry.addData("", "[] - change trajectory, X - confirm");
 
-            if (gamepad1.b && !bHeld)
-            {
-                bHeld = true;
-                redAlliance = !redAlliance;
-            }
-            if(!gamepad1.b) {bHeld = false;}
-
-            telemetry.addData("ALLIANCE", (redAlliance) ? "red" : "blue");
 
             if (gamepad1.x && !xHeld)
             {
@@ -112,7 +102,7 @@ public class Autonomous extends OpMode
             if (gamepad1.a)
             {
                 confirmed = true;
-                LaunchBoard.init(hardwareMap, redAlliance);
+                LaunchBoard.init(hardwareMap, !redAlliance);
             }
         }
     }
@@ -153,16 +143,6 @@ public class Autonomous extends OpMode
 
         if (closeTrajectory)
         {
-            if (redAlliance)
-            {
-                startClose = new Pose((72 - startClose.getX()+72),startClose.getY(),180 - startClose.getHeading());
-                shootClose = new Pose((72 - shootClose.getX()+72),shootClose.getY(),180 - shootClose.getHeading());
-                intake1StartClose = new Pose((72 - intake1StartClose.getX()+72),intake1StartClose.getY(),180 - intake1StartClose.getHeading());
-                intake1EndClose = new Pose((72 - intake1EndClose.getX()+72),intake1EndClose.getY(),180 - intake1EndClose.getHeading());
-                intake2StartClose = new Pose((72 - intake2StartClose.getX()+72),intake2StartClose.getY(),180 - intake2StartClose.getHeading());
-                intake2EndClose = new Pose((72 - intake2EndClose.getX()+72),intake2EndClose.getY(),180 - intake2EndClose.getHeading());
-                endClose = new Pose((72 - endClose.getX()+72),endClose.getY(),180 - endClose.getHeading());
-            }
 
             follower.setPose(startClose);
 
@@ -177,16 +157,6 @@ public class Autonomous extends OpMode
         }
         else
         {
-            if (redAlliance)
-            {
-                startFar = new Pose((72 - startFar.getX()+72),startFar.getY(),180 - startFar.getHeading());
-                shootFar = new Pose((72 - shootFar.getX()+72),shootFar.getY(),180 - shootFar.getHeading());
-                intake1StartFar = new Pose((72 - intake1StartFar.getX()+72),intake1StartFar.getY(),180 - intake1StartFar.getHeading());
-                intake1EndFar = new Pose((72 - intake1EndFar.getX()+72),intake1EndFar.getY(),180 - intake1EndFar.getHeading());
-                intake2StartFar = new Pose((72 - intake2StartFar.getX()+72),intake2StartFar.getY(),180 - intake2StartFar.getHeading());
-                intake2EndFar = new Pose((72 - intake2EndFar.getX()+72),intake2EndFar.getY(),180 - intake2EndFar.getHeading());
-                endFar = new Pose((72 - endFar.getX()+72),endFar.getY(),180 - endFar.getHeading());
-            }
 
             follower.setPose(startFar);
 
