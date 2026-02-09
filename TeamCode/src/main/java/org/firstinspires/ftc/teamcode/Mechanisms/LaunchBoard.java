@@ -27,13 +27,13 @@ public class LaunchBoard
     private final double LAUNCH_HEIGHT = 13;
 
     public static double GOAL_HEIGHT = 42; //in; 38.19 - physical goal height
-    public static double GOAL_ANGLE = 35;
+    public static double GOAL_ANGLE = 25;
 
     private final double MAX_LAUNCH_ANGLE = Math.toRadians(60);
     private final double MIN_LAUNCH_ANGLE = Math.toRadians(30);
 
     public static double TURRET_KP = 15;
-    public static double FLYWHEEL_KP = 5.5;
+    public static double FLYWHEEL_KP = 6.75;
     public static double FLYWHEEL_UNCONSTRAINTED_KP = 2;
 
     LimeLightBoard CamBoard = new LimeLightBoard();
@@ -51,17 +51,16 @@ public class LaunchBoard
 
     private LaunchState launchState = LaunchState.IDLE;
 
-    private double distance = 0;
     private double launchAngle = 0;
     private double ballsShot = 0;
     private double lastFlywheelSpeed = 0;
     private double manualAdjusterAngle = 0.35;
-    private double adjusterAngle = 0;
+    private double adjusterAngle = 0.3;
 
 
     public void init(HardwareMap hwMap, boolean redAlliance)
     {
-        CamBoard.init(hwMap, (redAlliance) ? 7 : 8);
+        CamBoard.init(hwMap, 8);
         //Initialize motors and servos
         intake = hwMap.get(DcMotor.class, "intake");
         leftFlywheel = initMotor(hwMap, false, "leftFlywheel",
@@ -119,20 +118,16 @@ public class LaunchBoard
                 leftFlywheel.setVeloCoefficients(3.25, 4.5, 0);
                 rightFlywheel.setVeloCoefficients(3.25, 4.5, 0);
 
-                double newDistance = CamBoard.GetAprilTag("range");
-                if (newDistance != 400) {distance = newDistance;}
+                double distance = CamBoard.GetAprilTag("range");
+                if (distance == 400) return;
                 List<Double> launchAngles =
                         FindAllLaunchAngles(distance, GOAL_HEIGHT, LAUNCH_HEIGHT, Math.toRadians(GOAL_ANGLE));
-                StringBuilder anglesFound = new StringBuilder();
 
                 if (launchAngles.isEmpty()) return;
 
                 double smallestLaunchSpeed = 999999;
                 for (double angle : launchAngles)
                 {
-                    anglesFound.append(String.format(Locale.US, "{%.3f}", Math.toDegrees(angle)));
-                    anglesFound.append("; ");
-
                     double launchSpeed;
                     if (angle < MIN_LAUNCH_ANGLE || angle > MAX_LAUNCH_ANGLE)
                     {
@@ -143,9 +138,10 @@ public class LaunchBoard
                         {
                             angle = MIN_LAUNCH_ANGLE;
                             launchSpeed = minAngleSpeed;
-                        } else
+                        }
+                        else
                         {
-                            angle = MAX_LAUNCH_ANGLE + Math.toRadians(15);
+                            angle = MAX_LAUNCH_ANGLE;
                             launchSpeed = maxAngleSpeed;
                         }
                     }
@@ -165,10 +161,11 @@ public class LaunchBoard
 
                 //Clamp angle adjuster range
                 adjusterAngle =
-                        Range.scale(launchAngle, MIN_LAUNCH_ANGLE, MAX_LAUNCH_ANGLE, 0.125, 0.9)
-                        + 0.055 * ballsShot;
+                        Range.scale(launchAngle, MIN_LAUNCH_ANGLE, MAX_LAUNCH_ANGLE, 0.125, 0.9);
+                        //+ 0.055 * ballsShot;
+
                 //Divide by 2*pi*radius to get RPS then multiply by TPR to get TPS (ticks per second)
-                flywheelSpeed *= smallestLaunchSpeed;
+                if (smallestLaunchSpeed < 999999) {flywheelSpeed *= smallestLaunchSpeed;}
 
                 break;
 
@@ -197,7 +194,6 @@ public class LaunchBoard
         angleAdjuster.setPosition(adjusterAngle);
     }
 
-
     public void LaunchAdjustment(FlywheelMode mode) {LaunchAdjustment(mode, 1);}
 
 
@@ -209,7 +205,11 @@ public class LaunchBoard
             turret.setPositionCoefficient(0.175);
             turret.set(0.05);
         }
-        else {turret.set(0.1);}
+        else
+        {
+            turret.setPositionCoefficient(0.15);
+            turret.set(0.1);
+        }
     }
 
     public void TurretMovement()
@@ -280,7 +280,7 @@ public class LaunchBoard
         {
             case INTAKE:
 
-                intake.setPower(0.8);
+                intake.setPower(0.95);
                 LaunchAdjustment(FlywheelMode.IDLE);
                 stopper.setPosition(0.75);
 

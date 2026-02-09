@@ -11,8 +11,8 @@ public class LimeLightBoard
 {
     private Limelight3A limelight;
 
-    private static final double BEARING_OFFSET = -4;
-    private static final double CALIBRATION_CONSTANT = 40 * sqrt(3.62);
+    private final double BEARING_OFFSET = -3;
+    private final double CALIBRATION_CONSTANT = 40 * sqrt(3.62);
 
     public void init(HardwareMap hwMap, int id)
     {
@@ -23,9 +23,6 @@ public class LimeLightBoard
     public void start()
     {
         limelight.start();
-        //Aww 200$ camera can't handle a pipeline switch without taking forever?
-        /*try {Thread.sleep(250);}
-        catch (InterruptedException ignored) {}*/
     }
 
     public void stop()

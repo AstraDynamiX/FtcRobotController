@@ -14,7 +14,6 @@ public class LimeLightAprilTagRecognition extends OpMode
     private Limelight3A limelight;
 
     private static final double BEARING_OFFSET = 0;
-    //Distance constant
     private static final double CALIBRATION_CONSTANT = 40 * sqrt(3.62);
 
     @Override

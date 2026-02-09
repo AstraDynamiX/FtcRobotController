@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.OpModes.Tests;
 
 import com.bylazar.configurables.annotations.Configurable;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -16,7 +17,7 @@ import java.util.List;
 import java.util.Locale;
 
 @Configurable
-@TeleOp(group = "tests")
+@Autonomous(group = "tests")
 public class AutomaticAdjustmentTest extends OpMode
 {
     public static double GOAL_HEIGHT = 42; //in; 38.19 - physical goal height
@@ -49,7 +50,7 @@ public class AutomaticAdjustmentTest extends OpMode
     @Override
     public void init()
     {
-        CamBoard.init(hardwareMap, 7);
+        CamBoard.init(hardwareMap, 8);
 
         intake = hardwareMap.get(DcMotor.class, "intake");
         leftFlywheel = initMotor(hardwareMap, false, "leftFlywheel",

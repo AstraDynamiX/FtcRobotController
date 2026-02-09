@@ -5,6 +5,7 @@ import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Mechanisms.LaunchBoard;
@@ -40,12 +41,14 @@ public class AutonomousBlue extends OpMode
 
     //Asta e ala de la close
     private Pose startClose = new Pose(25.083168545284792,131.24159529402453,Math.toRadians(143.8));
-    private Pose shootClose = new Pose(55.78587124798748,87.34970340213259,Math.toRadians(135));
-    private Pose intake1StartClose = new Pose(52.29729670270271, 85.27027027027026, Math.toRadians(180));
-    private Pose intake1EndClose = new Pose(19.299384761501017, 85.27027027027029, Math.toRadians(180));
-    private Pose intake2StartClose = new Pose(45.08108108108108,59.7027027027027,Math.toRadians(180));
-    private Pose intake2EndClose = new Pose(17.702702702702702,59.594594594594,Math.toRadians(180));
-    private Pose endClose = new Pose(115.51351351351352,23.108108108108105,Math.toRadians(-135));
+    private Pose shootClose = new Pose(55.78587124798748,87.34970340213259,Math.toRadians(140));
+    private Pose intake1StartClose = new Pose(52.29729670270271, 87.27027027027026, Math.toRadians(180));
+    private Pose intake1EndClose = new Pose(19.299384761501017, 87.27027027027029, Math.toRadians(180));
+    private Pose intake2StartClose = new Pose(50.08108108108108,65.7027027027027,Math.toRadians(180));
+    private Pose intake2EndClose = new Pose(17.702702702702702,65.594594594594,Math.toRadians(180));
+    private Pose intake3StartFar = new Pose(55.864864864864856, 37.24324324324324, Math.toRadians(180));
+    private Pose intake3EndFar = new Pose(20.540540540540533, 37.24324324324324, Math.toRadians(180));
+    private Pose endClose = new Pose(24.91891891891892,79.97837837837838,Math.toRadians(-135));
 
 
     private final Map<String, PathChain> paths = new LinkedHashMap<>();
@@ -60,6 +63,7 @@ public class AutonomousBlue extends OpMode
     boolean closeTrajectory = false;
     boolean xHeld = false;
     boolean confirmed = false;
+    boolean camAdjustment = true;
 
     PathChain path;
     double timerGoal = 0;
@@ -73,6 +77,7 @@ public class AutonomousBlue extends OpMode
         opModeTimer = new ElapsedTime();
         opModeTimer.reset();
 
+        LaunchBoard.init(hardwareMap, false);
         OmniBoard.init(hardwareMap);
 
         follower = Constants.createFollower(hardwareMap);
@@ -99,11 +104,6 @@ public class AutonomousBlue extends OpMode
 
             telemetry.addData("TRAJECTORY", (closeTrajectory) ? "close" : "far");
 
-            if (gamepad1.a)
-            {
-                confirmed = true;
-                LaunchBoard.init(hardwareMap, !redAlliance);
-            }
         }
     }
 
@@ -123,8 +123,15 @@ public class AutonomousBlue extends OpMode
     {
         follower.update();
         StatePathUpdate();
-        LaunchBoard.UpdateLaunch(true, 1);
-        LaunchBoard.TurretMovement();
+        if(camAdjustment) {
+            LaunchBoard.UpdateLaunch(true, 1);
+            LaunchBoard.TurretLockPosition(0);
+        }
+        else
+        {
+            LaunchBoard.TurretLockPosition(0);
+            LaunchBoard.UpdateLaunch(false,1);
+        }
 
         if (opModeTimer.seconds() > 30) {requestOpModeStop();}
     }
@@ -153,7 +160,12 @@ public class AutonomousBlue extends OpMode
             AddPath(shootClose, intake2StartClose, "shoot");
             AddPath(intake2StartClose, intake2EndClose, "intake");
             AddPath(intake2EndClose, shootClose, "rev");
+            AddPath(shootClose, intake3StartFar, "shoot");
+            AddPath(intake3StartFar, intake3EndFar, "intake");
+            AddPath(intake3EndFar, shootClose, "rev");
             AddPath(shootClose, endClose, "shoot");
+
+
         }
         else
         {
@@ -204,6 +216,7 @@ public class AutonomousBlue extends OpMode
             {
                 case "intake":
                     follower.setMaxPower(0.5);
+                    camAdjustment = false;
                     waiting = false;
                     LaunchBoard.Intake();
                     break;
@@ -211,6 +224,7 @@ public class AutonomousBlue extends OpMode
 
                 case "rev":
                     follower.setMaxPower(1);
+                    camAdjustment = true;
                     waiting = false;
                     LaunchBoard.Rev();
                     break;
@@ -218,15 +232,25 @@ public class AutonomousBlue extends OpMode
 
                 case "revSlow":
                     follower.setMaxPower(0.8);
+                    camAdjustment = true;
                     waiting = false;
                     LaunchBoard.Rev();
                     break;
 
                 case "shoot":
                     follower.setMaxPower(1);
+                    camAdjustment = true;
+                    timerGoal = 3000; timer.reset();
+                    LaunchBoard.Shoot();
+                    break;
+
+                case "shootNoCam":
+                    follower.setMaxPower(1);
+                    camAdjustment = false;
                     timerGoal = 2000; timer.reset();
                     LaunchBoard.Shoot();
                     break;
+
 
                 case "":
                 default:

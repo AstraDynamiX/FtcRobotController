@@ -56,7 +56,7 @@ public class AutonomousRed extends OpMode
 
     boolean aHeld = false;
     boolean bHeld = false;
-    boolean redAlliance = false;
+    boolean redAlliance = true;
     boolean closeTrajectory = false;
     boolean xHeld = false;
     boolean confirmed = false;
@@ -75,6 +75,7 @@ public class AutonomousRed extends OpMode
         opModeTimer.reset();
 
         OmniBoard.init(hardwareMap);
+        LaunchBoard.init(hardwareMap,true);
 
         follower = Constants.createFollower(hardwareMap);
     }
@@ -100,11 +101,6 @@ public class AutonomousRed extends OpMode
 
             telemetry.addData("TRAJECTORY", (closeTrajectory) ? "close" : "far");
 
-            if (gamepad1.a)
-            {
-                confirmed = true;
-                LaunchBoard.init(hardwareMap, !redAlliance);
-            }
         }
     }
 
