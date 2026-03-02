@@ -154,9 +154,11 @@ public class AutonomousRed extends OpMode
             AddPath(shootClose, intake1StartClose, "shoot");
             AddPath(intake1StartClose, intake1EndClose, "intake");
             AddPath(intake1EndClose, shootClose, "rev");
+            AddPath(shootClose, shootClose, "wait");
             AddPath(shootClose, intake2StartClose, "shootNoCam");
             AddPath(intake2StartClose, intake2EndClose, "intake");
             AddPath(intake2EndClose, shootClose, "rev");
+            AddPath(shootClose, shootClose, "wait");
             AddPath(shootClose, endClose, "shoot");
         }
         else
@@ -168,9 +170,11 @@ public class AutonomousRed extends OpMode
             AddPath(shootFar, intake1StartFar, "shoot");
             AddPath(intake1StartFar, intake1EndFar, "intake");
             AddPath(intake1EndFar, shootFar, "rev");
+            AddPath(shootFar, shootFar, "wait");
             AddPath(shootFar, intake2StartFar, "shoot");
             AddPath(intake2StartFar, intake2EndFar, "intake");
-            AddPath(intake2EndFar, shootFar, "revSlow"); //revSlow pt ca miscare e incosistenta
+            AddPath(intake2EndFar, shootFar, "revSlow");
+            AddPath(shootClose, shootClose, "wait");//revSlow pt ca miscare e incosistenta
             AddPath(shootFar, endFar, "shoot");
         }
     }
@@ -213,7 +217,6 @@ public class AutonomousRed extends OpMode
                     LaunchBoard.Intake();
                     break;
 
-
                 case "rev":
                     follower.setMaxPower(1);
                     camAdjustment = true;
@@ -221,8 +224,11 @@ public class AutonomousRed extends OpMode
                     LaunchBoard.Rev();
                     break;
 
-
-
+                case "wait":
+                    camAdjustment = true;
+                    timerGoal = 1000; timer.reset();
+                    LaunchBoard.Rev();
+                    break;
 
                 case "revSlow":
                     follower.setMaxPower(0.8);
@@ -234,7 +240,7 @@ public class AutonomousRed extends OpMode
                 case "shoot":
                     follower.setMaxPower(1);
                     camAdjustment = true;
-                    timerGoal = 2000; timer.reset();
+                    timerGoal = 3000; timer.reset();
                     LaunchBoard.Shoot();
                     break;
 
