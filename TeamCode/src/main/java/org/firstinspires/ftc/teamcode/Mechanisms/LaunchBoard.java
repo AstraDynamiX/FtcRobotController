@@ -60,7 +60,14 @@ public class LaunchBoard
 
     public void init(HardwareMap hwMap, boolean redAlliance)
     {
-        CamBoard.init(hwMap, 8);
+        if (redAlliance)
+        {
+            CamBoard.init(hwMap, 7);
+        }
+        else
+        {
+            CamBoard.init(hwMap, 8);
+        }
         //Initialize motors and servos
         intake = hwMap.get(DcMotor.class, "intake");
         leftFlywheel = initMotor(hwMap, false, "leftFlywheel",
