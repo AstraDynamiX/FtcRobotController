@@ -1,35 +1,32 @@
 package org.firstinspires.ftc.teamcode.OpModes;
 
+import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import org.firstinspires.ftc.teamcode.Mechanisms.CameraBoard;
+
 import org.firstinspires.ftc.teamcode.Mechanisms.LaunchBoard;
-import org.firstinspires.ftc.teamcode.Mechanisms.OmnimovementBoard;
+import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "TeleOp_DECODE")
 public class TeleOp extends OpMode {
 
-    private final double MOTOR_MULTIPLIER = 0.85;
+    private final double MOTOR_MULTIPLIER = 0.875;
     private final double STRAFE_MULTIPLIER = 1.4;
 
-    OmnimovementBoard OmniBoard = new OmnimovementBoard();
     LaunchBoard LaunchBoard = new LaunchBoard();
+
+    private Follower follower;
+    public static Pose startingPose; //See ExampleAuto to understand how to use this
 
     //Flags for buttons
     private boolean buttonHeld = false;
     ElapsedTime buttonHoldTimer = new ElapsedTime();
 
-    private boolean aHeld = false;
-    private boolean bHeld = false;
-    private boolean leftBumperHeld = false;
-    private boolean rightBumperHeld = false;
     private boolean upHeld = false;
     private boolean downHeld = false;
     private boolean rightHeld = false;
     private boolean leftHeld = false;
-    private boolean options1Held = false;
-    private boolean xHeld = false;
-    private boolean yHeld = false;
     //Init loop booleans
     private boolean redAlliance = false;
     private boolean allianceConfirmed = false;
@@ -37,13 +34,17 @@ public class TeleOp extends OpMode {
     private int launchState = 0;
     private double flywheelMultiplier = 300;
     private boolean camAdjustment = true;
+    private boolean robotCentricDrive = true;
     private boolean outtake = false;
 
 
     @Override
     public void init()
     {
-        OmniBoard.init(hardwareMap);
+        follower = Constants.createFollower(hardwareMap);
+        follower.setStartingPose(startingPose == null ? new Pose() : startingPose);
+        follower.update();
+        
         telemetry.addData("BOOTED:", "Welcome to AstraDynamiX Technologies!");
     }
 
@@ -54,18 +55,14 @@ public class TeleOp extends OpMode {
         {telemetry.addData("CONFIRMED", (redAlliance) ? "red" : "blue");}
         else
         {
-            telemetry.addData("", "A - change alliance, B - confirm");
+            telemetry.addData("", "() - change alliance, X - confirm");
 
-            if (gamepad1.a && !aHeld)
-            {
-                aHeld = true;
-                redAlliance = !redAlliance;
-            }
-            if(!gamepad1.a) {aHeld = false;}
+            if (gamepad1.bWasPressed())
+            {redAlliance = !redAlliance;}
 
             telemetry.addData("ALLIANCE", (redAlliance) ? "red" : "blue");
 
-            if (gamepad1.b)
+            if (gamepad1.a)
             {
                 allianceConfirmed = true;
                 LaunchBoard.init(hardwareMap, redAlliance);
@@ -77,30 +74,35 @@ public class TeleOp extends OpMode {
     public void start()
     {
         LaunchBoard.start();
+        follower.startTeleopDrive(true);
     }
 
     @Override
     public void loop()
     {
-        OmniBoard.ChassisMovement(
+        follower.setTeleOpDrive(
+                -gamepad1.left_stick_y * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1),
+                -gamepad1.left_stick_x * MOTOR_MULTIPLIER * STRAFE_MULTIPLIER / (gamepad1.left_trigger+1),
+                -gamepad1.right_stick_x * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1),
+                robotCentricDrive
+        );
+        follower.update();
+        /*OmniBoard.ChassisMovement(
                 gamepad1.left_stick_y * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
                 gamepad1.left_stick_x * (MOTOR_MULTIPLIER*STRAFE_MULTIPLIER) / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
                 gamepad1.right_stick_x * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
                 MOTOR_MULTIPLIER * STRAFE_MULTIPLIER
-        );
+        );*/
 
-        //Toggle cam adjustment
-        if (gamepad1.options && !options1Held)
-        {
-            options1Held = true;
-            camAdjustment = !camAdjustment;
-        }
-        if (!gamepad1.options) {options1Held = false;}
+        if (gamepad1.optionsWasPressed())
+        {camAdjustment = !camAdjustment;}
+
+        if (gamepad1.shareWasPressed())
+        {robotCentricDrive = !robotCentricDrive;}
 
         //Shooting
-        if (gamepad1.left_bumper && !leftBumperHeld)
+        if (gamepad1.leftBumperWasPressed())
         {
-            leftBumperHeld = true;
             switch (launchState)
             {
                 case 0: LaunchBoard.Intake(); break;
@@ -109,7 +111,6 @@ public class TeleOp extends OpMode {
             launchState++;
             if (launchState == 2) {launchState = 0;}
         }
-        if(!gamepad1.left_bumper) {leftBumperHeld = false;}
 
         if(gamepad1.x)
         {
@@ -122,14 +123,11 @@ public class TeleOp extends OpMode {
             LaunchBoard.Intake();
         }
 
-        if (gamepad1.right_bumper && !rightBumperHeld)
-        {
-            rightBumperHeld = true;
-            LaunchBoard.Shoot();
-        }
-        if(!gamepad1.right_bumper) {rightBumperHeld = false;}
+        if (gamepad1.rightBumperWasPressed())
+        {LaunchBoard.Shoot();}
 
-        if (gamepad1.y) {LaunchBoard.Idle();}
+        if (gamepad1.y)
+        {LaunchBoard.Idle();}
 
         //Flywheel and angle adjustment
         if (gamepad1.dpad_up && !upHeld)
@@ -168,6 +166,7 @@ public class TeleOp extends OpMode {
         {LaunchBoard.TurretLockPosition(0);}
 
         // ------ Telemetry ------
+        telemetry.addData("ROBOT CENTRIC", robotCentricDrive);
         telemetry.addData("CAM ADJUSTMENT", camAdjustment);
         telemetry.addData("LAUNCH ANGLE", LaunchBoard.getLaunchAngle());
         telemetry.addData("LAUNCH SPEED", LaunchBoard.getFlywheelSpeed());

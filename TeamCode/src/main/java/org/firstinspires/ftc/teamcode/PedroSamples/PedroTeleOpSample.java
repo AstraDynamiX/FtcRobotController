@@ -8,7 +8,7 @@ import com.seattlesolvers.solverslib.util.TelemetryData;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
-@TeleOp(group = "zPedroSample")
+@TeleOp(group = "zPedroSamples")
 public class PedroTeleOpSample extends CommandOpMode {
     Follower follower;
     TelemetryData telemetryData = new TelemetryData(telemetry);

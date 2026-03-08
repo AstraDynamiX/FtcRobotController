@@ -26,15 +26,15 @@ public class LaunchBoard
     private final double TICKS_PER_REV = 28; //Every GoBilda 5202 series motor has 28 TPR
     private final double LAUNCH_HEIGHT = 13;
 
-    public static double GOAL_HEIGHT = 42; //in; 38.19 - physical goal height
-    public static double GOAL_ANGLE = 25;
+    public static double GOAL_HEIGHT = 41; //in; 38.19 - physical goal height
+    public static double GOAL_ANGLE = 20;
 
     private final double MAX_LAUNCH_ANGLE = Math.toRadians(60);
     private final double MIN_LAUNCH_ANGLE = Math.toRadians(30);
 
     public static double TURRET_KP = 15;
-    public static double FLYWHEEL_KP = 6.75;
-    public static double FLYWHEEL_UNCONSTRAINTED_KP = 2;
+    public static double FLYWHEEL_KP = 6.5;
+    public static double FLYWHEEL_UNCONSTRAINTED_KP = 1;
 
     LimeLightBoard CamBoard = new LimeLightBoard();
     ElapsedTime stopperTimer = new ElapsedTime();
@@ -60,7 +60,7 @@ public class LaunchBoard
 
     public void init(HardwareMap hwMap, boolean redAlliance)
     {
-        CamBoard.init(hwMap, 8);
+        CamBoard.init(hwMap, (redAlliance) ? 7 : 8);
         //Initialize motors and servos
         intake = hwMap.get(DcMotor.class, "intake");
         leftFlywheel = initMotor(hwMap, false, "leftFlywheel",
@@ -261,7 +261,7 @@ public class LaunchBoard
         ballsShot = 0;
     }
 
-    public void Outtake() {launchState = launchState.OUTTAKE;}
+    public void Outtake() {launchState = LaunchState.OUTTAKE;}
 
     public void Rev() {launchState = LaunchState.REV;}
 
@@ -283,13 +283,6 @@ public class LaunchBoard
                 intake.setPower(0.95);
                 LaunchAdjustment(FlywheelMode.IDLE);
                 stopper.setPosition(0.75);
-
-                /*double distance = ballDistance.getDistance(DistanceUnit.CM);
-
-                if (distance < 5)
-                {
-
-                }*/
 
                 break;
 
@@ -320,7 +313,7 @@ public class LaunchBoard
                 {LaunchAdjustment(FlywheelMode.AUTOMATIC);}
                 else {LaunchAdjustment(FlywheelMode.MANUAL, flywheelMultiplier);}
 
-                intake.setPower(0.65);
+                intake.setPower(0.8);
 
                 break;
 
