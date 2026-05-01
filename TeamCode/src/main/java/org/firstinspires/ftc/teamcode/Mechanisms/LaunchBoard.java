@@ -63,14 +63,12 @@ public class LaunchBoard
         CamBoard.init(hwMap, (redAlliance) ? 7 : 8);
         //Initialize motors and servos
         intake = hwMap.get(DcMotor.class, "intake");
-        leftFlywheel = initMotor(hwMap, false, "leftFlywheel",
-                3.25, 4.5, 0);
-        rightFlywheel = initMotor(hwMap, true, "rightFlywheel",
-                3.25, 4.5, 0);
+        leftFlywheel = initFlywheelMotor(hwMap, false, "leftFlywheel");
+        rightFlywheel = initFlywheelMotor(hwMap, true, "rightFlywheel");
 
         turret = new MotorEx(hwMap, "turret", Motor.GoBILDA.RPM_435);
         turret.setRunMode(MotorEx.RunMode.PositionControl);
-        turret.setCachingTolerance(0.0001);
+        turret.setCachingTolerance(0.01);
         turret.setPositionCoefficient(0.15);
         turret.setPositionTolerance(2);
 
@@ -80,16 +78,14 @@ public class LaunchBoard
         angleAdjuster = hwMap.get(Servo.class, "angleAdjuster");
     }
 
-    private MotorEx initMotor(
-            HardwareMap hwMap, boolean inverted, String name,
-            double kp, double ki, double kd
-    )
+    private MotorEx initFlywheelMotor(HardwareMap hwMap, boolean inverted, String name)
     {
         MotorEx motor;
-        motor = new MotorEx(hwMap, name, TICKS_PER_REV, 6000);
+        motor = new MotorEx(hwMap, name, TICKS_PER_REV, 5800);
         motor.setRunMode(MotorEx.RunMode.VelocityControl);
-        motor.setVeloCoefficients(kp, ki, kd);
+        motor.setVeloCoefficients(3.25, 4.5, 0);
         motor.setInverted(inverted);
+        motor.setCachingTolerance(0.01);
         return motor;
     }
 
