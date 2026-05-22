@@ -75,7 +75,7 @@ public class SwerveBoard
             double currentWheelAngle = servoEncoders[i].getCurrentPosition();
             // Simple exponential filtering to reduce noise (f = filtered)
             fCurrentWheelAngle = NOISE_FILTER_COEF * currentWheelAngle + (1 - NOISE_FILTER_COEF) * fCurrentWheelAngle;
-            // Cosine compensation - reduce wheel speed based on angle error to reduce
+            // Cosine compensation - reduce wheel speed based on angle error to reduce...
             wheelSpeed *= Math.cos(wheelAngle - fCurrentWheelAngle);
 
             wheelSpeeds[i] = wheelSpeed;
@@ -89,6 +89,8 @@ public class SwerveBoard
             if (wheelSpeeds[i] > denominator)
             {denominator = wheelSpeeds[i];}
         }
+        // If no wheels exceed maxSpeed don't scale down
+        if (denominator == maxSpeed) {denominator = 1;}
 
         for (int i = 0; i < 4; i++)
         {

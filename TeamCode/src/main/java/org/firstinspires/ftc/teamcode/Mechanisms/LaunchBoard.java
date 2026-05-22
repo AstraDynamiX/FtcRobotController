@@ -33,7 +33,7 @@ public class LaunchBoard
     private final double MIN_LAUNCH_ANGLE = Math.toRadians(30);
 
     public static double TURRET_KP = 15;
-    public static double FLYWHEEL_KP = 6.5;
+    public static double FLYWHEEL_KP = 1;
     public static double FLYWHEEL_UNCONSTRAINTED_KP = 1;
 
     LimeLightBoard CamBoard = new LimeLightBoard();
@@ -63,8 +63,8 @@ public class LaunchBoard
         CamBoard.init(hwMap, (redAlliance) ? 7 : 8);
         //Initialize motors and servos
         intake = hwMap.get(DcMotor.class, "intake");
-        leftFlywheel = initFlywheelMotor(hwMap, false, "leftFlywheel");
-        rightFlywheel = initFlywheelMotor(hwMap, true, "rightFlywheel");
+        leftFlywheel = initFlywheelMotor(hwMap, true, "leftFlywheel");
+        rightFlywheel = initFlywheelMotor(hwMap, false, "rightFlywheel");
 
         turret = new MotorEx(hwMap, "turret", Motor.GoBILDA.RPM_435);
         turret.setRunMode(MotorEx.RunMode.PositionControl);
@@ -177,8 +177,8 @@ public class LaunchBoard
             case IDLE:
             default:
 
-                //Remove PID when slowing down because slowing down quickly is unnecessary
-                //and it drains battery, since motors brake instead of letting loose
+                // Remove PID when slowing down because slowing down quickly is unnecessary
+                // and it drains battery, since motors brake instead of letting loose
                 leftFlywheel.setVeloCoefficients(0, 0, 0);
                 rightFlywheel.setVeloCoefficients(0, 0, 0);
                 flywheelSpeed = 0;
@@ -276,7 +276,7 @@ public class LaunchBoard
         {
             case INTAKE:
 
-                intake.setPower(0.95);
+                intake.setPower(-0.95);
                 LaunchAdjustment(FlywheelMode.IDLE);
                 stopper.setPosition(0.75);
 
@@ -284,7 +284,7 @@ public class LaunchBoard
 
             case OUTTAKE:
 
-                intake.setPower(-0.8);
+                intake.setPower(0.8);
                 LaunchAdjustment(FlywheelMode.IDLE);
                 stopper.setPosition(0.75);
 
@@ -309,7 +309,7 @@ public class LaunchBoard
                 {LaunchAdjustment(FlywheelMode.AUTOMATIC);}
                 else {LaunchAdjustment(FlywheelMode.MANUAL, flywheelMultiplier);}
 
-                intake.setPower(0.8);
+                intake.setPower(-0.8);
 
                 break;
 

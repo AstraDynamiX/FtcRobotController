@@ -11,7 +11,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "TeleOp_DECODE")
 public class TeleOp extends OpMode {
 
-    private final double MOTOR_MULTIPLIER = 0.875;
+    private final double MOTOR_MULTIPLIER = 0.95;
     private final double STRAFE_MULTIPLIER = 1.4;
 
     LaunchBoard LaunchBoard = new LaunchBoard();
@@ -23,13 +23,9 @@ public class TeleOp extends OpMode {
     private boolean buttonHeld = false;
     ElapsedTime buttonHoldTimer = new ElapsedTime();
 
-    private boolean upHeld = false;
-    private boolean downHeld = false;
-    private boolean rightHeld = false;
-    private boolean leftHeld = false;
     //Init loop booleans
     private boolean redAlliance = false;
-    private boolean allianceConfirmed = false;
+    private boolean confirmed = false;
 
     private int launchState = 0;
     private double flywheelMultiplier = 300;
@@ -44,29 +40,28 @@ public class TeleOp extends OpMode {
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(startingPose == null ? new Pose() : startingPose);
         follower.update();
-        
-        telemetry.addData("BOOTED:", "Welcome to AstraDynamiX Technologies!");
+
+        telemetry.addData("BOOTED:", "");
     }
 
     @Override
     public void init_loop()
     {
-        if (allianceConfirmed)
+        if (confirmed)
         {telemetry.addData("CONFIRMED", (redAlliance) ? "red" : "blue");}
         else
         {
-            telemetry.addData("", "() - change alliance, X - confirm");
-
             if (gamepad1.bWasPressed())
             {redAlliance = !redAlliance;}
 
-            telemetry.addData("ALLIANCE", (redAlliance) ? "red" : "blue");
-
             if (gamepad1.a)
             {
-                allianceConfirmed = true;
+                confirmed = true;
                 LaunchBoard.init(hardwareMap, redAlliance);
             }
+
+            telemetry.addData("", "() - change alliance, X - confirm");
+            telemetry.addData("ALLIANCE", (redAlliance) ? "red" : "blue");
         }
     }
 
@@ -81,18 +76,12 @@ public class TeleOp extends OpMode {
     public void loop()
     {
         follower.setTeleOpDrive(
-                -gamepad1.left_stick_y * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1),
-                -gamepad1.left_stick_x * MOTOR_MULTIPLIER * STRAFE_MULTIPLIER / (gamepad1.left_trigger+1),
-                -gamepad1.right_stick_x * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1),
+                gamepad1.left_stick_y * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1),
+                gamepad1.left_stick_x * MOTOR_MULTIPLIER * STRAFE_MULTIPLIER / (gamepad1.left_trigger+1),
+                gamepad1.right_stick_x * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1),
                 robotCentricDrive
         );
         follower.update();
-        /*OmniBoard.ChassisMovement(
-                gamepad1.left_stick_y * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
-                gamepad1.left_stick_x * (MOTOR_MULTIPLIER*STRAFE_MULTIPLIER) / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
-                gamepad1.right_stick_x * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1) * (gamepad1.right_trigger/2+1),
-                MOTOR_MULTIPLIER * STRAFE_MULTIPLIER
-        );*/
 
         if (gamepad1.optionsWasPressed())
         {camAdjustment = !camAdjustment;}
@@ -130,40 +119,22 @@ public class TeleOp extends OpMode {
         {LaunchBoard.Idle();}
 
         //Flywheel and angle adjustment
-        if (gamepad1.dpad_up && !upHeld)
-        {
-            upHeld = true;
-            flywheelMultiplier += 25;
-        }
-        if (!gamepad1.dpad_up) {upHeld = false;}
+        if (gamepad1.dpadUpWasPressed())
+        {flywheelMultiplier += 25;}
 
-        if (gamepad1.dpad_down && !downHeld)
-        {
-            downHeld = true;
-            flywheelMultiplier -= 25;
-        }
-        if (!gamepad1.dpad_down) {downHeld = false;}
+        if (gamepad1.dpadDownWasPressed())
+        {flywheelMultiplier -= 25;}
 
-        if (gamepad1.dpad_right && !rightHeld)
-        {
-            rightHeld = true;
-            LaunchBoard.AngleAdjusterMovement(-0.05);
-        }
-        if (!gamepad1.dpad_right) {rightHeld = false;}
+        if (gamepad1.dpadRightWasPressed())
+        {LaunchBoard.AngleAdjusterMovement(-0.05);}
 
-        if (gamepad1.dpad_left && !leftHeld)
-        {
-            leftHeld = true;
-            LaunchBoard.AngleAdjusterMovement(0.05);
-        }
-        if (!gamepad1.dpad_left) {leftHeld = false;}
+        if (gamepad1.dpadLeftWasPressed())
+        {LaunchBoard.AngleAdjusterMovement(0.05);}
 
-        //Functions that get called every loop with no conditions
+        //Functions that get called every loop with no input condition
         LaunchBoard.UpdateLaunch(camAdjustment, flywheelMultiplier);
-        if (camAdjustment)
-        {LaunchBoard.TurretMovement();}
-        else
-        {LaunchBoard.TurretLockPosition(0);}
+        if (camAdjustment) {LaunchBoard.TurretMovement();}
+        else {LaunchBoard.TurretLockPosition(0);}
 
         // ------ Telemetry ------
         telemetry.addData("ROBOT CENTRIC", robotCentricDrive);

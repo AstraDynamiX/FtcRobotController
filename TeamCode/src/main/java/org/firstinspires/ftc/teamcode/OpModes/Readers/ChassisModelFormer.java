@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.OpModes.Tuners;
+package org.firstinspires.ftc.teamcode.OpModes.Readers;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -31,7 +31,7 @@ import java.util.Random;
  * of our motor, which is then used to generate PID coefficients mathematically
  */
 
-@TeleOp(group = "modelFormers")
+@TeleOp(group = "readers")
 public class ChassisModelFormer extends OpMode
 {
     private final int TICKS_PER_REV = 28;
@@ -141,7 +141,7 @@ public class ChassisModelFormer extends OpMode
 
         telemetry.addData("CURRENT AX", currentAx);
 
-        //Space is limited and pausing and repositioning the robot may be needed
+        //Space for movement is limited and pausing and repositioning the robot may be needed
         if (gamepad1.b && !bHeld)
         {
             bHeld = true;

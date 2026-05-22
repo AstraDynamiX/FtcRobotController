@@ -11,7 +11,7 @@ public class LimeLightBoard
 {
     private Limelight3A limelight;
 
-    private final double BEARING_OFFSET = -3;
+    private final double BEARING_OFFSET = 0;
     private final double CALIBRATION_CONSTANT = 40 * sqrt(3.62);
 
     public void init(HardwareMap hwMap, int id)

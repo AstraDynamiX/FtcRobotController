@@ -3,47 +3,61 @@ package org.firstinspires.ftc.teamcode.OpModes.Tests;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Supplier;
 
 @TeleOp(group = "tests")
 public class MotorIndividualTest extends OpMode
 {
-    private DcMotor leftFront;
-    private DcMotor rightFront;
-    private DcMotor leftBack;
-    private DcMotor rightBack;
+    private final String[] MOTOR_NAMES = {"leftFlywheel", "rightFlywheel"}; // Names used in Control Hub config
+    private final double TICKS_PER_REV = 28; //Every GoBilda 5202 series motor has 28 TPR
+
+    private MotorEx[] motors = new MotorEx[MOTOR_NAMES.length];
+    // Automatically updates values based on current inputs
+    private final Supplier<Float>[] inputs = new Supplier[] {
+            () -> gamepad1.left_stick_y,
+            () -> gamepad1.right_stick_y,
+            () -> gamepad1.left_trigger,
+            () -> gamepad1.right_trigger
+    };
 
     @Override
     public void init()
     {
-        leftFront = hardwareMap.get(DcMotor.class, "flWheel");
-        rightFront = hardwareMap.get(DcMotor.class, "rightFlywheel");
-        leftBack = hardwareMap.get(DcMotor.class, "leftFlywheel");
-        rightBack = hardwareMap.get(DcMotor.class, "turret");
+        for (int i = 0; i < MOTOR_NAMES.length; i++)
+        {
+            // Check if name exists in config
+            if (hardwareMap.get(MOTOR_NAMES[i]) != null)
+            {
+                motors[i] = initMotor(hardwareMap, MOTOR_NAMES[i]);
+                motors[i].resetEncoder();
+            }
+        }
+    }
 
-        leftFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        rightFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        leftBack.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        rightBack.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
-        leftBack.setDirection(DcMotorSimple.Direction.REVERSE);
-        rightFront.setDirection(DcMotorSimple.Direction.FORWARD);
-        rightBack.setDirection(DcMotorSimple.Direction.FORWARD);
+    private MotorEx initMotor(HardwareMap hwMap, String name)
+    {
+        MotorEx motor;
+        motor = new MotorEx(hwMap, name, TICKS_PER_REV, 5800);
+        motor.setRunMode(MotorEx.RunMode.VelocityControl);
+        return motor;
     }
 
     @Override
     public void loop()
     {
-        leftFront.setPower(gamepad1.left_trigger * 0.6);
-        rightFront.setPower(gamepad1.right_trigger * 0.6);
-        leftBack.setPower((gamepad1.left_bumper) ? 0.6 : 0);
-        rightBack.setPower((gamepad1.right_bumper) ? 0.6 : 0);
-
-        telemetry.addData("ENCODER", leftFront.getCurrentPosition());
-        telemetry.addData("ENCODER", rightFront.getCurrentPosition());
-        telemetry.addData("ENCODER", leftBack.getCurrentPosition());
-        telemetry.addData("ENCODER", rightBack.getCurrentPosition());
+        for (int i = 0; i < motors.length; i++)
+        {
+            if (motors[i] != null)
+            {
+                motors[i].setVelocity(inputs[i].get() * 0.9 * TICKS_PER_REV * 5800);
+                telemetry.addData(MOTOR_NAMES[i], motors[i].getCurrentPosition());
+            }
+        }
     }
+
 }

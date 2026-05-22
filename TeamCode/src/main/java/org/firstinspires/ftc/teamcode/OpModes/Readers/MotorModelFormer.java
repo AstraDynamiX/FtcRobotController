@@ -1,22 +1,14 @@
-package org.firstinspires.ftc.teamcode.OpModes.Tuners;
+package org.firstinspires.ftc.teamcode.OpModes.Readers;
 
-import com.bylazar.configurables.annotations.Configurable;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.util.Range;
 import com.qualcomm.robotcore.util.RobotLog;
-import com.seattlesolvers.solverslib.hardware.motors.Motor;
 import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Random;
 
 /**
@@ -30,7 +22,7 @@ import java.util.Random;
  * of our motor, which is then used to generate PID coefficients mathematically
  */
 
-@TeleOp(group = "modelFormers")
+@TeleOp(group = "readers")
 public class MotorModelFormer extends OpMode
 {
     private FileWriter writer;

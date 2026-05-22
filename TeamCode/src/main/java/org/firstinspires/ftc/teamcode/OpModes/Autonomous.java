@@ -46,44 +46,44 @@ public class Autonomous extends OpMode
     ElapsedTime timer = new ElapsedTime();
 
     //Blue close
-    private final Pose startCloseBlue = new Pose(25.083168545284792,131.24159529402453,Math.toRadians(143.8));
-    private final Pose shootCloseBlue = new Pose(55.78587124798748,87.34970340213259,Math.toRadians(140));
-    private final Pose intake1StartCloseBlue = new Pose(52.29729670270271, 87.27027027027026, Math.toRadians(180));
-    private final Pose intake1EndCloseBlue = new Pose(19.299384761501017, 87.27027027027029, Math.toRadians(180));
-    private final Pose intake2StartCloseBlue = new Pose(50.08108108108108,63.7027027027027,Math.toRadians(180));
-    private final Pose intake2EndCloseBlue = new Pose(17.702702702702702,63.594594594594,Math.toRadians(180));
-    private final Pose intake3StartCloseBlue = new Pose(55.864864864864856, 39.24324324324324, Math.toRadians(180));
-    private final Pose intake3EndCloseBlue = new Pose(20.540540540540533, 39.24324324324324, Math.toRadians(180));
-    private final Pose endCloseBlue = new Pose(24.91891891891892,79.97837837837838, Math.toRadians(-135));
+    private final Pose startCloseBlue = new Pose(25.083, 131.242, Math.toRadians(143.8));
+    private final Pose shootCloseBlue = new Pose(55.786, 87.350, Math.toRadians(140));
+    private final Pose intake1StartCloseBlue = new Pose(52.297, 87.270, Math.toRadians(180));
+    private final Pose intake1EndCloseBlue = new Pose(19.299, 87.270, Math.toRadians(180));
+    private final Pose intake2StartCloseBlue = new Pose(50.081, 63.703, Math.toRadians(180));
+    private final Pose intake2EndCloseBlue = new Pose(17.702, 63.594, Math.toRadians(180));
+    private final Pose intake3StartCloseBlue = new Pose(55.865, 39.243, Math.toRadians(180));
+    private final Pose intake3EndCloseBlue = new Pose(20.541, 39.243, Math.toRadians(180));
+    private final Pose endCloseBlue = new Pose(24.919, 79.978, Math.toRadians(-135));
 
     //Blue far
-    private final Pose startFarBlue = new Pose(56,8,Math.toRadians(90));
-    private final Pose shootFarBlue = new Pose(57.72972972972973,13.513513513513509,Math.toRadians(110));
-    private final Pose intake1StartFarBlue = new Pose(55.864864864864856, 37.24324324324324, Math.toRadians(180));
-    private final Pose intake1EndFarBlue = new Pose(20.540540540540533, 37.24324324324324, Math.toRadians(180));
-    private final Pose intake2StartFarBlue = new Pose(20.91891891891892,44.837837837837846,Math.toRadians(-95));
-    private final Pose intake2EndFarBlue = new Pose(18,17.45945945945946,Math.toRadians(-95));
-    private final Pose endFarBlue = new Pose(38.108108108108105,26.29729729729731,Math.toRadians(-150));
+    private final Pose startFarBlue = new Pose(56,8, Math.toRadians(90));
+    private final Pose shootFarBlue = new Pose(57.730,13.514, Math.toRadians(110));
+    private final Pose intake1StartFarBlue = new Pose(55.865, 37.243, Math.toRadians(180));
+    private final Pose intake1EndFarBlue = new Pose(20.541, 37.243, Math.toRadians(180));
+    private final Pose intake2StartFarBlue = new Pose(20.919, 44.838, Math.toRadians(-95));
+    private final Pose intake2EndFarBlue = new Pose(18, 17.459, Math.toRadians(-95));
+    private final Pose endFarBlue = new Pose(38.108, 26.297, Math.toRadians(-150));
 
     //Red close
-    private final Pose startCloseRed = new Pose(118.91683145471521,131.24159529402453, Math.toRadians(36.2));
-    private final Pose shootCloseRed = new Pose(88.21412875201253,87.34970340213259, Math.toRadians(45));
-    private final Pose intake1StartCloseRed = new Pose(91.70270329729729, 87.77027027027026, Math.toRadians(360));
-    private final Pose intake1EndCloseRed = new Pose(126.70061523849898, 87.77027027027029, Math.toRadians(360));
-    private final Pose intake2StartCloseRed = new Pose(98.91891891891892,63.7027027027027, Math.toRadians(360));
-    private final Pose intake2EndCloseRed = new Pose(126.29729729729729,63.5945945945946, Math.toRadians(360));
-    //private final Pose intake3StartCloseRed = new Pose(55.864864864864856, 39.24324324324324, Math.toRadians(180)); //TODO
-    //private final Pose intake3EndCloseRed = new Pose(20.540540540540533, 39.24324324324324, Math.toRadians(180)); //TODO
-    private final Pose endCloseRed = new Pose(112.05405405405405,79.97837837837838, Math.toRadians(250));
+    private final Pose startCloseRed = new Pose(118.917, 131.242, Math.toRadians(36.2));
+    private final Pose shootCloseRed = new Pose(88.214, 87.350, Math.toRadians(45));
+    private final Pose intake1StartCloseRed = new Pose(91.703, 87.270, Math.toRadians(360));
+    private final Pose intake1EndCloseRed = new Pose(124.701, 87.270, Math.toRadians(360));
+    private final Pose intake2StartCloseRed = new Pose(93.919, 63.703, Math.toRadians(360));
+    private final Pose intake2EndCloseRed = new Pose(126.298, 63.594, Math.toRadians(360));
+    private final Pose intake3StartCloseRed = new Pose(0, 39.243, Math.toRadians(180)); //TODO
+    private final Pose intake3EndCloseRed = new Pose(0, 39.243, Math.toRadians(180)); //TODO
+    private final Pose endCloseRed = new Pose(119.081, 79.978, Math.toRadians(250));
 
     //Red far
-    private final Pose startFarRed = new Pose(88,8,Math.toRadians(90));
-    private final Pose shootFarRed = new Pose(86.48648648648648,18.05405405405405,Math.toRadians(70));
-    private final Pose intake1StartFarRed = new Pose(93.13513513513514, 37.24324324324324, Math.toRadians(0));
-    private final Pose intake1EndFarRed = new Pose(126.45945945945947, 37.24324324324324, Math.toRadians(0));
-    private final Pose intake2StartFarRed = new Pose(133.75675675675677,38.51351351351348, Math.toRadians(0));
-    private final Pose intake2EndFarRed = new Pose(135.43243243243242,8.756756756756735, Math.toRadians(0));
-    private final Pose endFarRed = new Pose(38.108108108108105,26.29729729729731,Math.toRadians(275));
+    private final Pose startFarRed = new Pose(88, 8, Math.toRadians(90));
+    private final Pose shootFarRed = new Pose(86.486, 18.054, Math.toRadians(70));
+    private final Pose intake1StartFarRed = new Pose(93.135, 37.243, Math.toRadians(0));
+    private final Pose intake1EndFarRed = new Pose(126.459, 37.243, Math.toRadians(0));
+    private final Pose intake2StartFarRed = new Pose(133.757, 38.514, Math.toRadians(0));
+    private final Pose intake2EndFarRed = new Pose(135.432, 8.757, Math.toRadians(0));
+    private final Pose endFarRed = new Pose(38.108, 26.297, Math.toRadians(275));
 
 
     List<AutoStep> steps = new ArrayList<>();
@@ -120,21 +120,22 @@ public class Autonomous extends OpMode
             telemetry.addData("CONFIRMED", "");
             telemetry.addData("ALLIANCE", (redAlliance) ? "red" : "blue");
             telemetry.addData("TRAJECTORY", (closeTrajectory) ? "close" : "far");
-
-            LaunchBoard.init(hardwareMap, redAlliance);
         }
         else
         {
-            telemetry.addData("", "() - change alliance, [] - change trajectory, X - confirm");
-
             if (gamepad1.bWasPressed())
             {redAlliance = !redAlliance;}
 
             if (gamepad1.xWasPressed())
             {closeTrajectory = !closeTrajectory;}
 
-            if (gamepad1.a) {confirmed = true;}
+            if (gamepad1.a)
+            {
+                confirmed = true;
+                LaunchBoard.init(hardwareMap, redAlliance);
+            }
 
+            telemetry.addData("", "() - change alliance, [] - change trajectory, X - confirm");
             telemetry.addData("ALLIANCE", (redAlliance) ? "red" : "blue");
             telemetry.addData("TRAJECTORY", (closeTrajectory) ? "close" : "far");
 

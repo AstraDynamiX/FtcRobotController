@@ -12,30 +12,29 @@ public class ServoIndividualTest extends OpMode
     private Servo servo;
     private CRServo crServo;
 
+    private double servoPos = 0.5;
+
     @Override
     public void init()
     {
-        servo = hardwareMap.get(Servo.class, "angleAdjuster");
-        //crServo = hardwareMap.get(CRServo.class, "indexer");
+        servo = hardwareMap.get(Servo.class, "leftLed");
+        crServo = hardwareMap.get(CRServo.class, "lfPod");
     }
 
     @Override
     public void loop()
     {
-        if (gamepad1.a) servo.setPosition(0.1);
-        if (gamepad1.b) servo.setPosition(0.2);
-        if (gamepad1.y) servo.setPosition(0.3);
-        if (gamepad1.x) servo.setPosition(0.4);
-        if (gamepad1.left_bumper) servo.setPosition(0.5);
-        if (gamepad1.right_bumper) servo.setPosition(0.6);
-        if (gamepad1.dpad_down) servo.setPosition(0.7);
-        if (gamepad1.dpad_right) servo.setPosition(0.8);
-        if (gamepad1.dpad_up) servo.setPosition(0.9);
-        if (gamepad1.dpad_left) servo.setPosition(1);
+        if (gamepad1.leftBumperWasPressed()) servoPos = 0;
+        if (gamepad1.rightBumperWasPressed()) servoPos = 1;
+        if (gamepad1.dpadDownWasPressed()) servoPos -= 0.05;
+        if (gamepad1.dpadUpWasPressed()) servoPos += 0.05;
 
-        /*if (gamepad1.left_trigger > 0.5) {crServo.setPower(0.3);}
-        else if (gamepad1.right_trigger > 0.5) {crServo.setPower(-0.3);}
-        else {crServo.setPower(0);}*/
+        telemetry.addData("SERVO POSITION", servoPos);
+
+        servo.setPosition(servoPos);
+
+        if (gamepad1.right_trigger > 0.2) {crServo.setPower(gamepad1.right_trigger);}
+        else {crServo.setPower(-gamepad1.left_trigger);}
     }
 }
 

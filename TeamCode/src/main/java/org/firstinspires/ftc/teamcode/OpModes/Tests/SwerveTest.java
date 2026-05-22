@@ -1,0 +1,72 @@
+package org.firstinspires.ftc.teamcode.OpModes.Tests;
+
+import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.gamepad1;
+import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.hardwareMap;
+
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.seattlesolvers.solverslib.hardware.AbsoluteAnalogEncoder;
+import com.seattlesolvers.solverslib.hardware.motors.CRServoEx;
+import com.seattlesolvers.solverslib.hardware.motors.Motor;
+import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
+
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+
+
+@TeleOp(group = "tests")
+public class SwerveTest extends OpMode
+{
+    private CRServoEx crServo;
+    private AbsoluteAnalogEncoder servoAngle;
+    private MotorEx motor;
+
+    private double targetAngle = 0;
+    private boolean inverted = false;
+
+
+    @Override
+    public void init()
+    {
+        servoAngle = new AbsoluteAnalogEncoder(hardwareMap, "lfAngle", 3.3, AngleUnit.RADIANS);
+
+        crServo = new CRServoEx(hardwareMap, "lfPod", servoAngle, CRServoEx.RunMode.OptimizedPositionalControl);
+        crServo.setPIDF(new PIDFCoefficients(0.001, 0.0, 0.1, 0.0001));
+        crServo.setCachingTolerance(0.01);
+
+        motor = new MotorEx(hardwareMap, "lfMotor");
+        motor.setRunMode(Motor.RunMode.RawPower);
+        motor.setCachingTolerance(0.01);
+    }
+
+    @Override
+    public void loop()
+    {
+        /*if (gamepad1.right_trigger > 0.2) {crServo.setPower(gamepad1.right_trigger);}
+        else {crServo.setPower(-gamepad1.left_trigger);}*/
+
+        // Control angle of wheel using joystick, where joystick points = where wheel moves
+        // (release => wheel keeps position)
+        if (Math.abs(gamepad1.left_stick_y) + Math.abs(gamepad1.left_stick_x) > 0.9)
+        {targetAngle = Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x);}
+        telemetry.addData("TARGET ANGLE:", targetAngle);
+
+        // Angle optimisation - if error is larger than 90 degrees switch direction of motor
+        // and turn to the diametrically opposite angle
+        double angleError = crServo.get() - targetAngle;
+        if (Math.abs(angleError) > Math.toRadians(90))
+        {
+            targetAngle += (angleError > 0 ? 180 : -180);
+            inverted = !inverted;
+            motor.setInverted(inverted);
+        }
+
+        crServo.set(targetAngle);
+
+        motor.set(-gamepad1.right_stick_y);
+    }
+}

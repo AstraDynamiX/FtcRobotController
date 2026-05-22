@@ -17,12 +17,13 @@ import java.util.List;
 import java.util.Locale;
 
 @Configurable
-@Autonomous(group = "tests")
+@TeleOp(group = "tests")
 public class AutomaticAdjustmentTest extends OpMode
 {
     public static double GOAL_HEIGHT = 42; //in; 38.19 - physical goal height
     private final double LAUNCH_HEIGHT = 13;
-    public static double GOAL_ANGLE = 35;
+    public static double GOAL_ANGLE_DEGREES = 15;
+    private double GOAL_ANGLE;
 
     private final double TICKS_PER_REV = 28; //Every GoBilda 5202 series motor has 28 TPR
     private final double FLYWHEEL_RADIUS = 1.89; //in
@@ -40,11 +41,11 @@ public class AutomaticAdjustmentTest extends OpMode
     private MotorEx leftFlywheel;
     private MotorEx rightFlywheel;
 
-    double launchAngle = 0;
-    double smallestLaunchSpeed = 999999;
-    boolean motorControl = false;
-    boolean aHeld = false;
-    double distance = 0;
+    private double launchAngle = 0;
+    private double smallestLaunchSpeed = 999999;
+    private boolean motorControl = false;
+    private boolean servoControl = false;
+    private double distance = 0;
 
 
     @Override
@@ -59,7 +60,7 @@ public class AutomaticAdjustmentTest extends OpMode
                 3.25, 4.5, 0);
         angleAdjuster = hardwareMap.get(Servo.class, "angleAdjuster");
 
-        GOAL_ANGLE = Math.toRadians(GOAL_ANGLE);
+        GOAL_ANGLE = Math.toRadians(GOAL_ANGLE_DEGREES);
     }
 
     private MotorEx initMotor(
@@ -127,11 +128,6 @@ public class AutomaticAdjustmentTest extends OpMode
 
         if (motorControl)
         {
-            //Clamp angle adjuster range
-            double adjusterAngle =
-                    Range.scale(launchAngle, MIN_LAUNCH_ANGLE, MAX_LAUNCH_ANGLE, 0.125, 0.9);
-            angleAdjuster.setPosition(adjusterAngle);
-
             //Divide by 2*pi*radius to get RPS then multiply by TPR to get TPS (ticks per second)
             double flywheelInput = FLYWHEEL_KP * TICKS_PER_REV * smallestLaunchSpeed / (2 * 3.1415 * FLYWHEEL_RADIUS);
             leftFlywheel.setVelocity(flywheelInput);
@@ -147,12 +143,19 @@ public class AutomaticAdjustmentTest extends OpMode
             intake.setPower(0);
         }
 
-        if (gamepad1.a && !aHeld)
+        if (servoControl)
         {
-            aHeld = true;
-            motorControl = !motorControl;
+            //Clamp angle adjuster range
+            double adjusterAngle =
+                    Range.scale(launchAngle, MIN_LAUNCH_ANGLE, MAX_LAUNCH_ANGLE, 0.125, 0.9);
+            angleAdjuster.setPosition(adjusterAngle);
         }
-        if (!gamepad1.a) {aHeld = false;}
+
+        if (gamepad1.aWasPressed())
+        {motorControl = !motorControl;}
+
+        if (gamepad1.bWasPressed())
+        {servoControl = !servoControl;}
     }
 
     @Override
