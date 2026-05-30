@@ -4,6 +4,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
+import com.seattlesolvers.solverslib.hardware.motors.Motor;
 import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
 import java.io.File;
@@ -17,13 +18,11 @@ import java.util.Random;
  * and write encoder values every loop call.
 
  * It then outputs a table with this row structure:
- * TIMESTAMP  MOTOR INPUT (the number we put in SetVelocity)  ENCODER OUTPUT
- * This table is fed into Matlab, which uses it to generate a model
- * of our motor, which is then used to generate PID coefficients mathematically
+ * TIMESTAMP  MOTOR INPUT (the number we put in motor.set())  ENCODER OUTPUT
  */
 
 @TeleOp(group = "readers")
-public class MotorModelFormer extends OpMode
+public class MotorRandomExcitation extends OpMode
 {
     private FileWriter writer;
     Random rand = new Random();
@@ -32,8 +31,8 @@ public class MotorModelFormer extends OpMode
     MotorEx motor;
     MotorEx helperMotor;
 
-    private long lastLogTime;
-    private long input = 0;
+    private double lastLogTime;
+    private double input = 0;
     private int inputTime = 100;
     private long inputTimeCheck = 0;
 
@@ -53,15 +52,13 @@ public class MotorModelFormer extends OpMode
         {RobotLog.e("Failed to open log file: " + e.getMessage());}
 
         //Motor setup
-        motor = new MotorEx(hardwareMap, "leftFlywheel", 28, 6000);
-        motor.setRunMode(MotorEx.RunMode.VelocityControl);
-        motor.setVeloCoefficients(0, 0, 0); //No PID because that's what we're trying to generate
-        motor.setInverted(false);
+        motor = new MotorEx(hardwareMap, "leftFlywheel", Motor.GoBILDA.BARE);
+        motor.setRunMode(MotorEx.RunMode.RawPower);
+        motor.setInverted(true);
 
-        helperMotor = new MotorEx(hardwareMap, "rightFlywheel", 28, 6000);
-        helperMotor.setRunMode(MotorEx.RunMode.VelocityControl);
-        helperMotor.setVeloCoefficients(0, 0, 0); //No PID because that's what we're trying to generate
-        helperMotor.setInverted(true);
+        helperMotor = new MotorEx(hardwareMap, "rightFlywheel", Motor.GoBILDA.BARE);
+        helperMotor.setRunMode(MotorEx.RunMode.RawPower);
+        helperMotor.setInverted(false);
 
         now.reset();
     }
@@ -71,12 +68,12 @@ public class MotorModelFormer extends OpMode
     {
         if (now.milliseconds() - inputTimeCheck >= inputTime)
         {
-            input = rand.nextInt(28 * 85); //Degrees in a revolution * motor practical max revolutions per second
+            input = rand.nextDouble();
             inputTime = 50 + rand.nextInt(1200); //milliseconds (min. 50, max. 1250)
             inputTimeCheck = (long) now.milliseconds();
 
-            motor.setVelocity(input);
-            helperMotor.setVelocity(input);
+            motor.set(input);
+            helperMotor.set(input);
         }
 
         if (writer != null && now.milliseconds() - lastLogTime >= 50) //20 Hz
@@ -85,15 +82,15 @@ public class MotorModelFormer extends OpMode
                 writer.write(
                     now.seconds() + "," +
                     input + "," +
-                    motor.getVelocity() + "\n"
+                    -motor.getCorrectedVelocity() + "\n"
                 );
             }
             catch (IOException e)
             {RobotLog.e("File write failed: " + e.getMessage());}
-            lastLogTime = (long) now.milliseconds();
+            lastLogTime = now.milliseconds();
         }
 
-        telemetry.addData("ENCODER", motor.motor.getCurrentPosition());
+        telemetry.addData("ENCODER", motor.getCurrentPosition());
     }
 
     @Override

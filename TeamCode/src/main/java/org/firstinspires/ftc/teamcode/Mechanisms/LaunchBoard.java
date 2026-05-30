@@ -24,7 +24,7 @@ public class LaunchBoard
 {
     private final double FLYWHEEL_RADIUS = 1.89; //in
     private final double TICKS_PER_REV = 28; //Every GoBilda 5202 series motor has 28 TPR
-    private final double LAUNCH_HEIGHT = 13;
+    private final double LAUNCH_HEIGHT = 13.4;
 
     public static double GOAL_HEIGHT = 41; //in; 38.19 - physical goal height
     public static double GOAL_ANGLE = 20;
@@ -32,9 +32,12 @@ public class LaunchBoard
     private final double MAX_LAUNCH_ANGLE = Math.toRadians(60);
     private final double MIN_LAUNCH_ANGLE = Math.toRadians(30);
 
+    public static double FLYWHEEL_KP = 11.2;
+    public static double FLYWHEEL_KI = 14;
+
     public static double TURRET_KP = 15;
-    public static double FLYWHEEL_KP = 1;
-    public static double FLYWHEEL_UNCONSTRAINTED_KP = 1;
+    public static double FLYWHEEL_MULTIPLIER = 4;
+    public static double FLYWHEEL_UNCONSTRAINTED_MULTIPLIER = 1;
 
     LimeLightBoard CamBoard = new LimeLightBoard();
     ElapsedTime stopperTimer = new ElapsedTime();
@@ -83,7 +86,7 @@ public class LaunchBoard
         MotorEx motor;
         motor = new MotorEx(hwMap, name, TICKS_PER_REV, 5800);
         motor.setRunMode(MotorEx.RunMode.VelocityControl);
-        motor.setVeloCoefficients(3.25, 4.5, 0);
+        motor.setVeloCoefficients(FLYWHEEL_KP, FLYWHEEL_KI, 0);
         motor.setInverted(inverted);
         motor.setCachingTolerance(0.01);
         return motor;
@@ -103,7 +106,7 @@ public class LaunchBoard
     public void LaunchAdjustment(FlywheelMode mode, double flywheelMultiplier)
     {
         //Multiply this by in/s to get TPS
-        double flywheelSpeed = FLYWHEEL_KP * TICKS_PER_REV / (2 * 3.1415 * FLYWHEEL_RADIUS);
+        double flywheelSpeed = FLYWHEEL_MULTIPLIER * TICKS_PER_REV / (2 * 3.1415 * FLYWHEEL_RADIUS);
 
         switch (mode)
         {
@@ -111,8 +114,8 @@ public class LaunchBoard
 
             case AUTOMATIC:
 
-                leftFlywheel.setVeloCoefficients(3.25, 4.5, 0);
-                rightFlywheel.setVeloCoefficients(3.25, 4.5, 0);
+                leftFlywheel.setVeloCoefficients(FLYWHEEL_KP, FLYWHEEL_KI, 0);
+                rightFlywheel.setVeloCoefficients(FLYWHEEL_KP, FLYWHEEL_KI, 0);
 
                 double distance = CamBoard.GetAprilTag("range");
                 if (distance == 400) return;
@@ -151,14 +154,13 @@ public class LaunchBoard
                 }
 
                 //Recoil to compensate for temporary flywheel speed loss caused by contact with balls
-                if (rightFlywheel.getVelocity() + 25 < lastFlywheelSpeed && ballsShot < 3)
+                /*if (rightFlywheel.getVelocity() + 25 < lastFlywheelSpeed && ballsShot < 3)
                 {ballsShot++;}
-                lastFlywheelSpeed = rightFlywheel.getVelocity();
+                lastFlywheelSpeed = rightFlywheel.getVelocity();*/
 
                 //Clamp angle adjuster range
                 adjusterAngle =
                         Range.scale(launchAngle, MIN_LAUNCH_ANGLE, MAX_LAUNCH_ANGLE, 0.125, 0.9);
-                        //+ 0.055 * ballsShot;
 
                 //Divide by 2*pi*radius to get RPS then multiply by TPR to get TPS (ticks per second)
                 if (smallestLaunchSpeed < 999999) {flywheelSpeed *= smallestLaunchSpeed;}
@@ -167,8 +169,8 @@ public class LaunchBoard
 
             case MANUAL:
 
-                leftFlywheel.setVeloCoefficients(3.25, 4.5, 0);
-                rightFlywheel.setVeloCoefficients(3.25, 4.5, 0);
+                leftFlywheel.setVeloCoefficients(FLYWHEEL_KP, FLYWHEEL_KI, 0);
+                rightFlywheel.setVeloCoefficients(FLYWHEEL_KP, FLYWHEEL_KI, 0);
 
                 flywheelSpeed = flywheelMultiplier;
                 adjusterAngle = manualAdjusterAngle;
@@ -343,7 +345,7 @@ public class LaunchBoard
 
         if (denom <= 0) return 999999; //Impossible at this angle
 
-        return Math.sqrt(g * x * x / denom) * FLYWHEEL_UNCONSTRAINTED_KP;
+        return Math.sqrt(g * x * x / denom) * FLYWHEEL_UNCONSTRAINTED_MULTIPLIER;
     }
 
     //Separate function into sections and find sections in which function crosses 0

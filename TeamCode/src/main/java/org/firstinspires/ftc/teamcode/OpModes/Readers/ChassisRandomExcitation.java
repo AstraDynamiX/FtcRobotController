@@ -32,7 +32,7 @@ import java.util.Random;
  */
 
 @TeleOp(group = "readers")
-public class ChassisModelFormer extends OpMode
+public class ChassisRandomExcitation extends OpMode
 {
     private final int TICKS_PER_REV = 28;
     private final double BOUNDS = 55; //in - how much room the robot has

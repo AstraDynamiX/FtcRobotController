@@ -35,10 +35,10 @@ public class SwerveTest extends OpMode
         servoAngle = new AbsoluteAnalogEncoder(hardwareMap, "lfAngle", 3.3, AngleUnit.RADIANS);
 
         crServo = new CRServoEx(hardwareMap, "lfPod", servoAngle, CRServoEx.RunMode.OptimizedPositionalControl);
-        crServo.setPIDF(new PIDFCoefficients(0.001, 0.0, 0.1, 0.0001));
+        crServo.setPIDF(new PIDFCoefficients(0.2, 0.0, 0.1, 0.0001));
         crServo.setCachingTolerance(0.01);
 
-        motor = new MotorEx(hardwareMap, "lfMotor");
+        motor = new MotorEx(hardwareMap, "lfWheel");
         motor.setRunMode(Motor.RunMode.RawPower);
         motor.setCachingTolerance(0.01);
     }
@@ -51,22 +51,40 @@ public class SwerveTest extends OpMode
 
         // Control angle of wheel using joystick, where joystick points = where wheel moves
         // (release => wheel keeps position)
-        if (Math.abs(gamepad1.left_stick_y) + Math.abs(gamepad1.left_stick_x) > 0.9)
+        if (Math.hypot(gamepad1.left_stick_x, gamepad1.left_stick_y) > 0.5)
         {targetAngle = Math.atan2(-gamepad1.left_stick_y, gamepad1.left_stick_x);}
-        telemetry.addData("TARGET ANGLE:", targetAngle);
 
-        // Angle optimisation - if error is larger than 90 degrees switch direction of motor
+        double currentAngle = servoAngle.getCurrentPosition();
+        // Calculates the shortest path automatically
+        double angleError =
+                Math.atan2(
+                        Math.sin(targetAngle - currentAngle),
+                        Math.cos(targetAngle - currentAngle)
+                );
+
+        // Angle optimization - if error is larger than 90 degrees switch direction of motor
         // and turn to the diametrically opposite angle
-        double angleError = crServo.get() - targetAngle;
-        if (Math.abs(angleError) > Math.toRadians(90))
+        if (Math.abs(angleError) > Math.PI / 2)
         {
-            targetAngle += (angleError > 0 ? 180 : -180);
+            targetAngle += Math.PI;
+            targetAngle = wrapAngle(targetAngle);
+
             inverted = !inverted;
             motor.setInverted(inverted);
         }
 
         crServo.set(targetAngle);
+        telemetry.addData("SERVO ANGLE", servoAngle.getCurrentPosition());
+        telemetry.addData("TARGET ANGLE:", targetAngle);
+        telemetry.addData("INVERTED", inverted);
 
         motor.set(-gamepad1.right_stick_y);
+    }
+
+
+    // Convert 0 - 360 degree range angles to -180 - 180
+    public double wrapAngle(double angle)
+    {
+        return Math.atan2(Math.sin(angle), Math.cos(angle));
     }
 }
