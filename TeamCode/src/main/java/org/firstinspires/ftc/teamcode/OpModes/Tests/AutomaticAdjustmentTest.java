@@ -8,10 +8,15 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.Range;
+import com.qualcomm.robotcore.util.RobotLog;
+import com.seattlesolvers.solverslib.hardware.motors.Motor;
 import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
 import org.firstinspires.ftc.teamcode.Mechanisms.LimeLightBoard;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -21,25 +26,31 @@ import java.util.Locale;
 public class AutomaticAdjustmentTest extends OpMode
 {
     public static double GOAL_HEIGHT = 42; //in; 38.19 - physical goal height
-    private final double LAUNCH_HEIGHT = 13;
+    private final double LAUNCH_HEIGHT = 13.4;
     public static double GOAL_ANGLE_DEGREES = 15;
     private double GOAL_ANGLE;
 
     private final double TICKS_PER_REV = 28; //Every GoBilda 5202 series motor has 28 TPR
     private final double FLYWHEEL_RADIUS = 1.89; //in
-    public static double FLYWHEEL_KP = 5.5;
-    public static double FLYWHEEL_UNCONSTRAINTED_KP = 1.8;
-    private static double FAR_ANGLE = 10;
+    public static double FLYWHEEL_KP = 11.2;
+    public static double FLYWHEEL_KI = 14;
+
+    public static double FLYWHEEL_MULTIPLIER = 1.17;
+    public static double FLYWHEEL_UNCONSTRAINTED_MULTIPLIER = 1;
+    public static double FLYWHEEL_BIAS = 735; // TPS
 
     private final double MAX_LAUNCH_ANGLE = Math.toRadians(60);
     private final double MIN_LAUNCH_ANGLE = Math.toRadians(30);
 
+
     LimeLightBoard CamBoard = new LimeLightBoard();
+    private FileWriter writer;
 
     private Servo angleAdjuster;
     private DcMotor intake;
     private MotorEx leftFlywheel;
     private MotorEx rightFlywheel;
+    private MotorEx turret;
 
     private double launchAngle = 0;
     private double smallestLaunchSpeed = 999999;
@@ -54,24 +65,32 @@ public class AutomaticAdjustmentTest extends OpMode
         CamBoard.init(hardwareMap, 8);
 
         intake = hardwareMap.get(DcMotor.class, "intake");
-        leftFlywheel = initMotor(hardwareMap, false, "leftFlywheel",
-                3.25, 4.5, 0);
-        rightFlywheel = initMotor(hardwareMap, true, "rightFlywheel",
-                3.25, 4.5, 0);
+        leftFlywheel = initMotor(hardwareMap, true, "leftFlywheel");
+        rightFlywheel = initMotor(hardwareMap, false, "rightFlywheel");
         angleAdjuster = hardwareMap.get(Servo.class, "angleAdjuster");
 
-        GOAL_ANGLE = Math.toRadians(GOAL_ANGLE_DEGREES);
+        turret = new MotorEx(hardwareMap, "turret", Motor.GoBILDA.RPM_435);
+        turret.setRunMode(MotorEx.RunMode.PositionControl);
+        turret.setCachingTolerance(0.001);
+        turret.setPositionCoefficient(0.15);
+        turret.setPositionTolerance(5);
+
+        File file = new File("/sdcard/FIRST/autoAdjustmentData.csv");
+
+        try {
+            writer = new FileWriter(file, false);
+            writer.write("distance,launchAngle,launchSpeed\n"); // header
+        }
+        catch (IOException e)
+        {RobotLog.e("Failed to open file: " + e.getMessage());}
     }
 
-    private MotorEx initMotor(
-            HardwareMap hwMap, boolean inverted, String name,
-            double kp, double ki, double kd
-    )
+    private MotorEx initMotor(HardwareMap hwMap, boolean inverted, String name)
     {
         MotorEx motor;
-        motor = new MotorEx(hwMap, name, TICKS_PER_REV, 6000);
+        motor = new MotorEx(hwMap, name, Motor.GoBILDA.BARE);
         motor.setRunMode(MotorEx.RunMode.VelocityControl);
-        motor.setVeloCoefficients(kp, ki, kd);
+        motor.setVeloCoefficients(FLYWHEEL_KP, FLYWHEEL_KI, 0);
         motor.setInverted(inverted);
         return motor;
     }
@@ -82,12 +101,15 @@ public class AutomaticAdjustmentTest extends OpMode
     @Override
     public void loop()
     {
-        double newDistance = CamBoard.GetAprilTag("range");
-        if (newDistance != 400) {distance = newDistance;}
+        GOAL_ANGLE = Math.toRadians(GOAL_ANGLE_DEGREES);
+
+        distance = CamBoard.GetAprilTag("range");
+        if (distance == 999999) return;
+
         List<Double> launchAngles = FindAllLaunchAngles(distance, GOAL_HEIGHT, LAUNCH_HEIGHT, GOAL_ANGLE);
         StringBuilder anglesFound = new StringBuilder();
 
-        if (launchAngles.isEmpty()) {return;}
+        if (launchAngles.isEmpty()) return;
 
         smallestLaunchSpeed = 999999;
         for (double angle : launchAngles)
@@ -108,7 +130,7 @@ public class AutomaticAdjustmentTest extends OpMode
                 }
                 else
                 {
-                    angle = MAX_LAUNCH_ANGLE - Math.toRadians(FAR_ANGLE); //Hardware issues call for hardcoded magic
+                    angle = MAX_LAUNCH_ANGLE;
                     launchSpeed = maxAngleSpeed;
                 }
             }
@@ -123,18 +145,43 @@ public class AutomaticAdjustmentTest extends OpMode
             }
         }
 
+        //Divide in/s by 2*pi*radius to get RPS then multiply by TPR to get TPS (ticks per second)
+        double launchSpeedTps = smallestLaunchSpeed * TICKS_PER_REV / (2 * 3.1415 * FLYWHEEL_RADIUS);
+        double flywheelInput = (FLYWHEEL_MULTIPLIER * launchSpeedTps) + FLYWHEEL_BIAS;
+
+        telemetry.addData("DISTANCE", distance);
         telemetry.addData("ANGLES FOUND", anglesFound);
-        telemetry.addData("LAUNCH SPEED", smallestLaunchSpeed);
+        telemetry.addData("LAUNCH ANGLE", Math.toDegrees(launchAngle));
+        telemetry.addData("LAUNCH SPEED", flywheelInput);
+        telemetry.addData("RAW LAUNCH SPEED", launchSpeedTps);
+
+        if (gamepad1.xWasPressed() && writer != null)
+        {
+            try {
+                writer.write(
+                        distance + "," +
+                        Math.toDegrees(launchAngle) + "," +
+                        flywheelInput + "\n"
+                );
+                writer.flush();
+            }
+            catch (IOException e)
+            {RobotLog.e("Write failed: " + e.getMessage());}
+        }
+
+        if (gamepad1.aWasPressed())
+        {motorControl = !motorControl;}
+
+        if (gamepad1.bWasPressed())
+        {servoControl = !servoControl;}
 
         if (motorControl)
         {
             //Divide by 2*pi*radius to get RPS then multiply by TPR to get TPS (ticks per second)
-            double flywheelInput = FLYWHEEL_KP * TICKS_PER_REV * smallestLaunchSpeed / (2 * 3.1415 * FLYWHEEL_RADIUS);
             leftFlywheel.setVelocity(flywheelInput);
             rightFlywheel.setVelocity(flywheelInput);
-            telemetry.addData("FLYWHEEL SPEED", flywheelInput);
 
-            intake.setPower(0.8);
+            intake.setPower(-0.8);
         }
         else
         {
@@ -146,27 +193,47 @@ public class AutomaticAdjustmentTest extends OpMode
         if (servoControl)
         {
             //Clamp angle adjuster range
-            double adjusterAngle =
-                    Range.scale(launchAngle, MIN_LAUNCH_ANGLE, MAX_LAUNCH_ANGLE, 0.125, 0.9);
+            double adjusterAngle = Range.scale(launchAngle, MIN_LAUNCH_ANGLE, MAX_LAUNCH_ANGLE, 0.05, 0.8);
             angleAdjuster.setPosition(adjusterAngle);
         }
 
-        if (gamepad1.aWasPressed())
-        {motorControl = !motorControl;}
-
-        if (gamepad1.bWasPressed())
-        {servoControl = !servoControl;}
+        TurretLockPosition(0);
     }
 
     @Override
-    public void stop() {CamBoard.stop();}
+    public void stop()
+    {
+        CamBoard.stop();
 
+        if (writer != null)
+        {
+            try { writer.flush(); writer.close(); }
+            catch (IOException e) { RobotLog.e("Close failed: " + e.getMessage()); }
+        }
+    }
+
+
+    public void TurretLockPosition(double input)
+    {
+        turret.setTargetPosition((int)input);
+        if (turret.atTargetPosition())
+        {
+            turret.setPositionCoefficient(0.175);
+            turret.set(0.05);
+        }
+        else
+        {
+            turret.setPositionCoefficient(0.15);
+            turret.set(0.1);
+        }
+    }
 
     private double LaunchSpeed(double launchAngle, double x, double goalAngle)
     {
         //gravitational acceleration in in/s^2 = 386.09
+        double g = 386.09;
         return Math.sqrt(
-                (386.09 * x * Math.cos(launchAngle) * Math.cos(goalAngle)) /
+                (g * x * Math.cos(launchAngle) * Math.cos(goalAngle)) /
                         Math.sin(launchAngle + goalAngle)
         );
     }
@@ -181,7 +248,7 @@ public class AutomaticAdjustmentTest extends OpMode
 
         if (denom <= 0) return 999999; //Impossible at this angle
 
-        return Math.sqrt(g * x * x / denom) * FLYWHEEL_UNCONSTRAINTED_KP;
+        return Math.sqrt(g * x * x / denom);
     }
 
     //Separate function into sections and find sections in which function crosses 0

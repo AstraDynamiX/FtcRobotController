@@ -101,7 +101,6 @@ public class MotorStepReader extends OpMode
 
         telemetry.addData("STEP", STEPS[stepIndex]);
         telemetry.addData("VELOCITY", motor.getVelocity());
-        telemetry.update();
     }
 
     @Override

@@ -76,9 +76,9 @@ public class TeleOp extends OpMode {
     public void loop()
     {
         follower.setTeleOpDrive(
-                gamepad1.left_stick_y * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1),
-                gamepad1.left_stick_x * MOTOR_MULTIPLIER * STRAFE_MULTIPLIER / (gamepad1.left_trigger+1),
-                gamepad1.right_stick_x * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1),
+                -gamepad1.left_stick_y * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1),
+                -gamepad1.left_stick_x * MOTOR_MULTIPLIER * STRAFE_MULTIPLIER / (gamepad1.left_trigger+1),
+                -gamepad1.right_stick_x * MOTOR_MULTIPLIER / (gamepad1.left_trigger+1),
                 robotCentricDrive
         );
         follower.update();
@@ -135,10 +135,12 @@ public class TeleOp extends OpMode {
         LaunchBoard.UpdateLaunch(camAdjustment, flywheelMultiplier);
         if (camAdjustment) {LaunchBoard.TurretMovement();}
         else {LaunchBoard.TurretLockPosition(0);}
+        //LaunchBoard.TurretCounterRotation(gamepad1.right_stick_x);
 
         // ------ Telemetry ------
         telemetry.addData("ROBOT CENTRIC", robotCentricDrive);
         telemetry.addData("CAM ADJUSTMENT", camAdjustment);
+        telemetry.addData("DISTANCE", LaunchBoard.getDistance());
         telemetry.addData("LAUNCH ANGLE", LaunchBoard.getLaunchAngle());
         telemetry.addData("LAUNCH SPEED", LaunchBoard.getFlywheelSpeed());
 

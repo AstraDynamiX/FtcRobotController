@@ -14,7 +14,7 @@ import java.util.function.Supplier;
 @TeleOp(group = "tests")
 public class MotorIndividualTest extends OpMode
 {
-    private final String[] MOTOR_NAMES = {"leftFlywheel", "rightFlywheel"}; // Names used in Control Hub config
+    private final String[] MOTOR_NAMES = {"leftFlywheel", "rightFlywheel", "turret"}; // Names used in Control Hub config
 
     private MotorEx[] motors = new MotorEx[MOTOR_NAMES.length];
     // Automatically updates values based on current inputs
@@ -55,7 +55,7 @@ public class MotorIndividualTest extends OpMode
             if (motors[i] != null)
             {
                 motors[i].set(inputs[i].get() * 0.9);
-                telemetry.addData(MOTOR_NAMES[i], motors[i].getVelocity());
+                telemetry.addData(MOTOR_NAMES[i], motors[i].getCurrentPosition());
             }
         }
     }

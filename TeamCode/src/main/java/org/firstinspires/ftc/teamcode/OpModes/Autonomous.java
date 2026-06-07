@@ -31,10 +31,10 @@ class AutoStep
     }
 }
 
-@com.qualcomm.robotcore.eventloop.opmode.Autonomous(name = "Autonomous_Revamped")
+@com.qualcomm.robotcore.eventloop.opmode.Autonomous(name = "Autonomous")
 public class Autonomous extends OpMode
 {
-    private final double SHOOT_DELAY = 650; //Wait for turret to adjust
+    private final double SHOOT_DELAY = 900; //Wait for turret to adjust
     private final double SHOOT_TIME = 2600; //Wait for shooting before starting path
     private final double INTAKE_SPEED = 0.5;
 
@@ -46,8 +46,8 @@ public class Autonomous extends OpMode
     ElapsedTime timer = new ElapsedTime();
 
     //Blue close
-    private final Pose startCloseBlue = new Pose(25.083, 131.242, Math.toRadians(143.8));
-    private final Pose shootCloseBlue = new Pose(55.786, 87.350, Math.toRadians(140));
+    private final Pose startCloseBlue = new Pose(25.083, 131.242, Math.toRadians(143.5));
+    private final Pose shootCloseBlue = new Pose(54, 90, Math.toRadians(135));
     private final Pose intake1StartCloseBlue = new Pose(52.297, 87.270, Math.toRadians(180));
     private final Pose intake1EndCloseBlue = new Pose(19.299, 87.270, Math.toRadians(180));
     private final Pose intake2StartCloseBlue = new Pose(50.081, 63.703, Math.toRadians(180));
@@ -66,8 +66,8 @@ public class Autonomous extends OpMode
     private final Pose endFarBlue = new Pose(38.108, 26.297, Math.toRadians(-150));
 
     //Red close
-    private final Pose startCloseRed = new Pose(118.917, 131.242, Math.toRadians(36.2));
-    private final Pose shootCloseRed = new Pose(88.214, 87.350, Math.toRadians(45));
+    private final Pose startCloseRed = new Pose(118.917, 131.242, Math.toRadians(36.5));
+    private final Pose shootCloseRed = new Pose(90, 90, Math.toRadians(45));
     private final Pose intake1StartCloseRed = new Pose(91.703, 87.270, Math.toRadians(360));
     private final Pose intake1EndCloseRed = new Pose(124.701, 87.270, Math.toRadians(360));
     private final Pose intake2StartCloseRed = new Pose(93.919, 63.703, Math.toRadians(360));
@@ -96,7 +96,7 @@ public class Autonomous extends OpMode
     boolean redAlliance = false;
     boolean closeTrajectory = true;
     boolean confirmed = false;
-    boolean camAdjustment = true;
+    boolean turretAdjustment = false;
 
 
     @Override
@@ -195,10 +195,10 @@ public class Autonomous extends OpMode
                 AddStep(intake2StartCloseBlue, intake2EndCloseBlue, () -> LaunchBoard.Intake(), INTAKE_SPEED, 0, 0);
                 AddStep(intake2EndCloseBlue, shootCloseBlue, () -> LaunchBoard.Rev(), 1, 0, 0);
                 AddStep(shootCloseBlue, startCloseBlue, () -> LaunchBoard.Shoot(), 1, SHOOT_TIME, SHOOT_DELAY);
-                /*AddStep(shootCloseBlue, intake3StartCloseBlue, () -> LaunchBoard.Shoot(), 1, SHOOT_TIME, SHOOT_DELAY);
+                AddStep(shootCloseBlue, intake3StartCloseBlue, () -> LaunchBoard.Shoot(), 1, SHOOT_TIME, SHOOT_DELAY);
                 AddStep(intake3StartCloseBlue, intake3EndCloseBlue, () -> LaunchBoard.Intake(), INTAKE_SPEED, 0, 0);
                 AddStep(intake3EndCloseBlue, shootCloseBlue, () -> LaunchBoard.Rev(), 1, 0, 0);
-                AddStep(shootCloseBlue, endCloseBlue, () -> LaunchBoard.Shoot(), 1, SHOOT_TIME, SHOOT_DELAY);*/
+                AddStep(shootCloseBlue, endCloseBlue, () -> LaunchBoard.Shoot(), 1, SHOOT_TIME, SHOOT_DELAY);
             }
             else
             {
@@ -221,17 +221,10 @@ public class Autonomous extends OpMode
     {
         follower.update();
         RunScheduler();
+        LaunchBoard.UpdateLaunch(true, 1);
 
-        if (camAdjustment)
-        {
-            LaunchBoard.UpdateLaunch(true, 1);
-            LaunchBoard.TurretMovement();
-        }
-        else
-        {
-            LaunchBoard.UpdateLaunch(false,1);
-            LaunchBoard.TurretLockPosition(0);
-        }
+        if (turretAdjustment) LaunchBoard.TurretMovement();
+        else LaunchBoard.TurretLockPosition(0);
 
         if (opModeTimer.seconds() > 30) {requestOpModeStop();}
     }

@@ -6,6 +6,8 @@ import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import java.util.ArrayList;
+
 
 public class LimeLightBoard
 {
@@ -33,9 +35,9 @@ public class LimeLightBoard
 
     public double GetAprilTag(String dimension)
     {
-        if (limelight == null) {return 400;}
+        if (limelight == null) {return 999999;}
         LLResult detection = limelight.getLatestResult();
-        double distance = 400; //Impossible value to tell if data has actually been found
+        double distance = 999999; //Impossible value to tell if data has actually been found
 
         if (detection.isValid())
         {
@@ -59,8 +61,9 @@ public class LimeLightBoard
     //Returns all dimensions in a list
     public double[] GetAprilTag()
     {
+        if (limelight == null) {return new double[] {999999, 999999};}
         LLResult detection = limelight.getLatestResult();
-        double[] info = {400, 400}; //Impossible values for each to tell if data has actually been found
+        double[] info = {999999, 999999}; //Impossible values for each to tell if data has actually been found
 
         if (detection.isValid())
         {
